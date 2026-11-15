@@ -30,12 +30,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Test rotating coupon discovery algorithm
+        run: python3 -m unittest discover -s tests -p "test_collector.py" -v
       - name: Query KFC Taiwan ordering endpoints (bounded incremental scan)
         env:
           KFC_MAX_CHECKS: "35"
           KFC_REQUEST_DELAY: "0.8"
-          KFC_SCAN_START: "24000"
-          KFC_SCAN_END: "26000"
+          KFC_SCAN_MARGIN: "2000"
         run: python3 scripts/collect_official.py --out data
       - name: Validate collector output
         run: |
