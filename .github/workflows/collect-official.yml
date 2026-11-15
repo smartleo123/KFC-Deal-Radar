@@ -1,0 +1,57 @@
+name: Collect KFC official API data
+
+on:
+  schedule:
+    - cron: "9 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: official-kfc-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Query KFC Taiwan ordering endpoints (bounded incremental scan)
+        env:
+          KFC_MAX_CHECKS: "35"
+          KFC_REQUEST_DELAY: "0.8"
+          KFC_SCAN_START: "24000"
+          KFC_SCAN_END: "26000"
+        run: python3 scripts/collect_official.py --out data
+      - name: Validate collector output
+        run: |
+          python3 -m py_compile scripts/collect_official.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/official.json')
+          if p.exists():
+              data=json.loads(p.read_text(encoding='utf-8'))
+              assert isinstance(data['coupon_list'],list)
+              assert data['count']==len(data['coupon_list'])
+              assert all(c['source']=='kfc_api_verified' for c in data['coupon_list'])
+              print('Verified coupons:',data['count'])
+          PY
+      - name: Persist verified data for the next scan
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/official.json data/singles.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No official data changes"
+          else
+            git commit -m "data: update KFC API verified coupons and menu prices"
+            git push origin HEAD:main
+          fi
