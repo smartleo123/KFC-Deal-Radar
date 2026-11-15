@@ -10,7 +10,8 @@ import os
 from pathlib import Path
 import time
 from datetime import datetime, timezone, timedelta
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPCookieProcessor
+from http.cookiejar import CookieJar
 from urllib.error import HTTPError, URLError
 
 API="https://olo-api.kfcclub.com.tw"
@@ -19,6 +20,7 @@ SHOP=os.environ.get("KFC_SHOP_CODE","TWI104")
 DELAY=float(os.environ.get("KFC_REQUEST_DELAY","0.7"))
 MAX_CHECKS=int(os.environ.get("KFC_MAX_CHECKS","80"))
 CURRENT_DATE=datetime.now(TZ).strftime("%Y/%m/%d")
+OPENER=build_opener(HTTPCookieProcessor(CookieJar()))
 
 def post(path, payload):
     url=API+path
@@ -26,7 +28,7 @@ def post(path, payload):
     for attempt in range(3):
         try:
             request=Request(url,body,{"Content-Type":"application/json","Accept":"application/json","Origin":"https://www.kfcclub.com.tw","Referer":"https://www.kfcclub.com.tw/","User-Agent":"KFC-Deal-Radar/1.0"})
-            with urlopen(request,timeout=18) as response:
+            with OPENER.open(request,timeout=18) as response:
                 if response.status!=200:raise RuntimeError(f"HTTP {response.status}")
                 raw=response.read(3_000_000)
             obj=json.loads(raw)
@@ -39,6 +41,12 @@ def post(path, payload):
             if attempt==2:raise RuntimeError(f"KFC endpoint unavailable: {path}: {err}") from err
             time.sleep(min(2**attempt*3,10))
     raise RuntimeError("Unreachable")
+
+def initialize_shop():
+    shop=post("/menu/v1/QueryDeliveryShops",{"shopCode":SHOP,"orderType":"2","platform":"1"})
+    if shop.get("Success") is not True:raise RuntimeError("Cannot initialize KFC shop")
+    times=post("/menu/v1/QueryDeliveryTime",{"shopCode":SHOP,"orderType":"2","orderDate":CURRENT_DATE,"addQt":"0","sdeQt":"0"})
+    if times.get("Success") is not True:raise RuntimeError("Cannot initialize KFC ordering date")
 
 def name(s):
     s=str(s or "").strip()
@@ -146,6 +154,7 @@ def main():
     meta=dict(previous.get("scan") or {})
     codes,cursor=seed_codes({**saved,"_scan_cursor":meta.get("cursor",int(os.environ.get("KFC_SCAN_START","24000")))})
     # Fail safe: the collector must prove access before modifying a valid snapshot.
+    initialize_shop()
     checked=0
     failed=0
     verified=0
