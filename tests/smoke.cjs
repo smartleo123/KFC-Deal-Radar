@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const listeners={};
 const sandbox={window:{},document:{readyState:'loading',addEventListener:(name,cb)=>listeners[name]=cb},localStorage:{getItem:()=>null},Date,Intl,Number,String,Math,Set,Object,Array,JSON,RegExp,console};
 vm.runInNewContext(fs.readFileSync('app.js','utf8'),sandbox);
-const {norm,drinksFor,referencePrice,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate}=sandbox.window.__KFC_RADAR_TEST__;
+const {norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate}=sandbox.window.__KFC_RADAR_TEST__;
 assert.equal(norm(' 雞 腿 '),'雞腿');
 const deal={coupon_code:12345,name:'測試套餐',price:90,items:[{name:'可樂(中)',count:1,flavors:[]},{name:'雞腿堡',count:1,flavors:[]}]};
 const singles={'可樂(中)':{price:35},'雞腿堡':{price:95}};
@@ -37,4 +37,23 @@ assert.equal(merged.find(x=>x.coupon_code===50521).source,'kfc_api_verified');
 assert.equal(merged.find(x=>x.coupon_code===50522).source,'community_unverified');
 assert.equal(isValidOnDate({end_date:'2026-11-23'},new Date('2026-11-15T00:00:00+08:00').getTime()),true);
 assert.equal(isValidOnDate({end_date:'2026-11-10'},new Date('2026-11-15T00:00:00+08:00').getTime()),false);
+const officialMenu={
+ '原味蛋撻':{price:49},'冰無糖綠茶(小)':{price:35},
+ '上校雞塊4塊':{price:49},'香酥脆薯(小)':{price:41},
+ '百事可樂(中)':{price:38},'咔啦脆雞':{price:70}
+};
+const officialBundle={coupon_code:50521,price:38,items:[{name:'百事可樂(中)',count:2}]};
+assert.equal(referencePriceInfo(officialBundle,{},officialMenu).price,76);
+assert.equal(referencePriceInfo(officialBundle,{},officialMenu).source,'official');
+assert.equal(enrich(officialBundle,{},officialMenu).percent,50);
+const combo={items:[{name:'2入原味蛋撻',count:1},{name:'無糖綠茶(小)',count:1}]};
+assert.equal(referencePrice(combo,{},officialMenu),133);
+assert.equal(referencePrice({items:[{name:'4塊雞塊+小薯',count:1}]},{},officialMenu),90);
+assert.equal(referencePrice({items:[{name:'咔啦脆雞(辣)',count:2},{name:'糖醋醬',count:1}]},{},officialMenu),140);
+assert.equal(referencePrice({items:[{name:'10顆雙色轉轉QQ球',count:1}]},{},officialMenu),null);
+assert.equal(referencePrice({items:[{name:'沒有官網定價的特殊餐',count:1}]},{},officialMenu),null);
+const fallbackC={items:[{name:'咔啦雞腿堡(辣)',count:1},{name:'原味蛋撻',count:1}]};
+const thirdParty={'咔啦雞腿堡(辣)':{price:120}};
+assert.equal(referencePriceInfo(fallbackC,thirdParty,officialMenu).price,169);
+assert.equal(referencePriceInfo(fallbackC,thirdParty,officialMenu).source,'mixed');
 console.log('Smoke tests passed');
