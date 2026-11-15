@@ -304,9 +304,8 @@ function isValidOnDate(c,now=Date.now()){
  const stamp=Date.parse(String(c.end_date).replace(/\//g,"-").slice(0,10)+"T23:59:59+08:00");
  return Number.isFinite(stamp)&&stamp>=now;
 }
-function presentCoupons(data,singles,label,officialSingles=null){
+function presentCoupons(data,singles,officialSingles=null){
  coupons=data.coupon_list.map(c=>enrich(c,singles,officialSingles)).filter(Boolean).filter(isValidOnDate);
- $("updated").textContent=label+(data.last_update?" · 更新："+data.last_update:"");
  $("total").textContent=format(coupons.length);
  const known=coupons.filter(c=>c.percent!==null);
  $("known").textContent=format(known.length);
@@ -321,10 +320,7 @@ async function init(){
  const refresh=()=>{
   const merged=mergeCouponLists(officialData?.coupon_list,communityData?.coupon_list);
   const prices={...(communityPrices||{}),...(officialPrices||{})};
-   const label="優惠資料"
-    +(officialData?.last_update?" · 官方更新："+officialData.last_update:"")
-    +(communityData?.last_update?" · 補充更新："+communityData.last_update:"");
-  presentCoupons({coupon_list:merged,last_update:""},prices,label,officialPrices);
+  presentCoupons({coupon_list:merged,last_update:""},prices,officialPrices);
  };
  // Show verified coupons as soon as official data arrives; don't discard
  // community coupons just because any official snapshot exists.
@@ -355,7 +351,6 @@ async function init(){
  })();
  await Promise.allSettled([officialTask,communityTask]);
  if(!officialData&&!communityData){
-  $("updated").textContent="資料暫時無法取得";
   $("status").textContent="兩個來源均無法取得，請稍後重試。";
   $("empty").hidden=false;
   $("empty").querySelector("strong").textContent="資料來源暫時不可用";
