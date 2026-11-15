@@ -90,7 +90,9 @@ def seed_codes(existing):
     discovery_offset=int(existing.get("_discovery_offset",0))
     scan_cursor=existing.get("_scan_cursor")
     cursor=int(scan_cursor) if scan_cursor is not None else start
-    if not (start<=cursor<end):cursor=start
+    # New series: probe *above* the newest observed code first, not thousands
+    # of older codes before reaching likely future promotions.
+    if not (start<=cursor<end):cursor=anchor
 
     known_budget=min(len(known),budget//4)
     discovered_budget=min(len(discovered),budget//2)
