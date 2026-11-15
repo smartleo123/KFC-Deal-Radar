@@ -15,6 +15,19 @@ async function main(){
    ok:true,
    json:async()=>String(url).includes("singles.json")?singles:official
  });
+ const sample=official.coupon_list[0];
+ const extra={coupon_code:9999988,name:"合併資料測試",price:85,end_date:"2099-12-31",items:[{name:"可樂",count:1}]};
+ const community={coupon_list:[extra,{...sample,price:1}],last_update:"test"};
+ const originalAppend=w.document.head.append.bind(w.document.head);
+ w.document.head.append=(element)=>{
+   if(element.tagName==="SCRIPT"&&String(element.src).includes("coupon.js")){
+     w.COUPON_DICT=community;
+     queueMicrotask(()=>element.onload?.());
+   }else if(element.tagName==="SCRIPT"&&String(element.src).includes("single.js")){
+     w.SINGLE_DICT=singles;
+     queueMicrotask(()=>element.onload?.());
+   }else originalAppend(element);
+ };
  w.eval(fs.readFileSync("app.js","utf8"));
  await new Promise(resolve=>setTimeout(resolve,350));
  const $=id=>w.document.getElementById(id);
@@ -25,6 +38,9 @@ async function main(){
  assert.notEqual($("total").textContent,"—","Total must render");
  assert(w.document.querySelectorAll("article.coupon").length>0,"Cards must render after official data loads");
  assert.equal($("empty").hidden,true);
+ assert.equal(Number($("total").textContent.replace(/,/g,"")),official.coupon_list.length+1,"Community-only coupon must appear alongside official coupons");
+ assert($("grid").textContent.includes("9999988"),"Community-only coupon code must be displayed");
+ assert($("updated").textContent.includes("其他待驗證 1 張"),"Source breakdown must distinguish unverified coupons");
  const foodButton=[...w.document.querySelectorAll("[data-food]")].find(b=>b.dataset.food==="飲料");
  assert(foodButton,"Food filter must include drinks");
  foodButton.click();
