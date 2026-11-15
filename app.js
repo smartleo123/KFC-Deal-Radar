@@ -25,6 +25,7 @@ const norm=s=>String(s||"").replace(/\s+/g,"").toLowerCase();
 const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=content;return e;};
 const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},favoritesOnly:false,sharedCode:""};
 let coupons=[],favorites;
+let sharedScrolled=false;
 try{favorites=new Set(JSON.parse(localStorage.getItem("kfc-radar-favorites")||"[]").map(String));}catch{favorites=new Set();}
 const aliases={
  "原蛋":"原味蛋撻","小薯":"香酥脆薯(小)","中薯":"香酥脆薯(中)","大薯":"香酥脆薯(大)",
@@ -223,6 +224,12 @@ function render(){
  const target=$("grid");target.replaceChildren();const fragment=document.createDocumentFragment();
  for(const c of list.slice(0,400))fragment.append(card(c));
  target.append(fragment);$("empty").hidden=list.length>0;
+ if(state.sharedCode&&list.length&&!sharedScrolled){
+  sharedScrolled=true;
+  window.requestAnimationFrame?.(()=>{
+   document.getElementById("coupon-"+state.sharedCode)?.scrollIntoView?.({block:"center",behavior:"smooth"});
+  });
+ }
  if(list.length>400)$("status").textContent+=" · 先顯示前 400 筆";
 }
 function reset(){
