@@ -352,7 +352,7 @@ function presentCoupons(data,singles,officialSingles=null){
 }
 async function init(){
  const target=new URLSearchParams(window.location.search).get("coupon");
- if(target&&/^\\d{3,12}$/.test(target))state.sharedCode=target;
+ if(target&&/^[0-9]{3,12}$/.test(target))state.sharedCode=target;
  bind();
  let officialData=null,officialPrices=null,communityData=null,communityPrices=null;
  let officialIssue=null,communityIssue=null;
