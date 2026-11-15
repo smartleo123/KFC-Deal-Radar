@@ -106,3 +106,13 @@
 [data-theme="dark"] .shared-view strong{color:#ff818b}
 [data-theme="dark"] .shared-target{outline-color:#ff6974}
 @media(max-width:610px){.card-actions{gap:6px}.details,.order,.share{font-size:12px;padding:11px 2px}.shared-view{align-items:flex-start;flex-direction:column}}
+
+/* Share in coupon header; favorite persists locally in the same browser. */
+.coupon-head-actions{display:flex;align-items:center;gap:8px}
+.coupon-head .share-top{font-size:12px;font-weight:750;padding:9px 11px;min-height:36px;white-space:nowrap}
+.card-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+@media(max-width:610px){
+ .coupon-head-actions{gap:7px}
+ .coupon-head .share-top{font-size:12px;padding:9px 10px}
+ .card-actions{gap:9px}
+}
