@@ -63,7 +63,10 @@ async function main(){
  const cards=[...w.document.querySelectorAll("article.coupon")];
  const extraCard=cards.find(c=>c.textContent.includes("9999988"));
  assert(extraCard && !extraCard.textContent.includes("官方驗證"),"Community-only coupon must have no verification badge");
- const officialCard=cards.find(c=>c.querySelector(".code")?.textContent.includes(String(sample.coupon_code)));
+ const officialCard=cards.find(c=>c.querySelector(".coupon-title")?.textContent.includes(String(sample.coupon_code)));
+ assert.equal(w.document.querySelectorAll(".coupon-head .code").length,0,"Repeated coupon-number label must be removed");
+ assert(officialCard?.querySelector(".coupon-head > .coupon-title"),"Title must occupy the left side of the top row");
+ assert(officialCard?.querySelector(".coupon-head > .coupon-head-actions"),"Share and favorite must remain at top right");
  assert(officialCard?.querySelector(".pill.verified")?.textContent==="官方驗證","Verified coupon must have official badge");
  assert(officialCard?.querySelector(".validity")?.textContent.includes(sample.end_date),"Coupon card must display end date");
  assert(officialCard?.querySelector(".validity")?.textContent.includes(sample.start_date),"Coupon card must display start date");
