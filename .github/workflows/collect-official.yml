@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "scripts/collect_official.py"
+      - "tests/test_collector.py"
       - ".github/workflows/collect-official.yml"
   schedule:
     - cron: "9 */4 * * *"
