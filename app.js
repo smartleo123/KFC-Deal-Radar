@@ -20,7 +20,7 @@ function withinBudget(price,min,max){
  return !(low!==null&&price<low || high!==null&&price>high || low!==null&&high!==null&&low>high);
 }
 const format=n=>new Intl.NumberFormat("zh-TW").format(n);
-const money=n=>"NT$"+format(n);
+const money=n=>"NT$"+new Intl.NumberFormat("zh-TW",{maximumFractionDigits:2}).format(n);
 const norm=s=>String(s||"").replace(/\s+/g,"").toLowerCase();
 const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=content;return e;};
 const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},favoritesOnly:false,sharedCode:""};
@@ -202,7 +202,7 @@ function card(c){
  a.append(top);
  const bar=node("div","pricebar"),prices=node("div","price");
  prices.append(node("strong","",money(c.price)));
- if(c.original!==null)prices.append(node("span","original",money(c.original)));
+ if(c.saving!==null)prices.append(node("span","original",money(c.original)));
  bar.append(prices);
  const saving=node("div","discount"+(c.percent===null?" unknown":""));
  saving.append(node("span","",c.percent===null?"原價未確認":c.percent+"% OFF"));
@@ -422,6 +422,6 @@ async function init(){
  }
 }
 
-window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate,shareUrl};
+window.__KFC_RADAR_TEST__={money,norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate,shareUrl};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
