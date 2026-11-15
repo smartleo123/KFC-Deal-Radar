@@ -65,7 +65,7 @@ def discovery_codes():
     try:
         req=Request("https://winedays.github.io/KCouper/coupon.js",
                     headers={"User-Agent":"KFC-Deal-Radar/1.0"})
-        with urlopen(req,timeout=12) as response:
+        with OPENER.open(req,timeout=12) as response:
             data=response.read(5_000_000).decode("utf-8")
         prefix="window.COUPON_DICT="
         if not data.lstrip().startswith(prefix):return []
