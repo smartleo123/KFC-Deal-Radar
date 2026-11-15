@@ -23,7 +23,7 @@ const format=n=>new Intl.NumberFormat("zh-TW").format(n);
 const money=n=>"NT$"+format(n);
 const norm=s=>String(s||"").replace(/\s+/g,"").toLowerCase();
 const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=content;return e;};
-const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},knownOnly:false,favoritesOnly:false};
+const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},favoritesOnly:false,sharedCode:""};
 let coupons=[],favorites;
 try{favorites=new Set(JSON.parse(localStorage.getItem("kfc-radar-favorites")||"[]").map(String));}catch{favorites=new Set();}
 const aliases={
@@ -113,11 +113,11 @@ function enrich(c,dict,officialDict){
 }
 function getFiltered(){
  const list=coupons.filter(c=>{
+  if(state.sharedCode)return c.code===state.sharedCode;
   if(state.search&&!norm([c.code,c.name,...itemNames(c)].join(" ")).includes(norm(state.search)))return false;
   if(!withinBudget(c.price,state.minPrice,state.maxPrice))return false;
   const groups=matchingFoodGroups(c);
   if(Object.entries(state.food).some(([key,mode])=>mode==="include"&&!groups[key]||mode==="exclude"&&groups[key]))return false;
-  if(state.knownOnly&&c.percent===null)return false;
   if(state.favoritesOnly&&!favorites.has(c.code))return false;
   return true;
  });
@@ -149,8 +149,35 @@ function detail(c){
  host.append(list,node("p","detail-meta","供應時段、門市適用條件與實際價格請以肯德基公告為準。"));
  $("detail").showModal();
 }
+function shareUrl(code,base){
+ const url=new URL("./",base);
+ url.searchParams.set("coupon",String(code));
+ return url.toString();
+}
+async function copyShareLink(code,button){
+ const url=shareUrl(code,window.location.href);
+ try{
+  if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(url);
+  else{
+   const field=node("textarea");
+   field.value=url;field.style.position="fixed";field.style.left="-9999px";
+   document.body.append(field);field.select();
+   const ok=document.execCommand?.("copy");
+   field.remove();
+   if(!ok)throw Error("無法自動複製");
+  }
+  button.textContent="✓ 已複製";
+  button.setAttribute("aria-label","優惠碼 "+code+" 分享網址已複製");
+ }catch(error){
+  button.textContent="複製失敗";
+  button.setAttribute("aria-label","複製失敗，請重試");
+  console.warn("無法複製分享網址",error);
+ }
+}
 function card(c){
  const a=node("article","coupon"),top=node("div","coupon-top"),head=node("div","coupon-head");
+ a.id="coupon-"+c.code;
+ if(state.sharedCode===c.code)a.classList.add("shared-target");
  head.append(node("span","code","# "+c.code));
  const fav=node("button","fav"+(favorites.has(c.code)?" on":""),favorites.has(c.code)?"♥":"♡");
  fav.type="button";fav.setAttribute("aria-label","收藏優惠碼 "+c.code);fav.setAttribute("aria-pressed",String(favorites.has(c.code)));
@@ -180,22 +207,35 @@ function card(c){
  open.type="button";open.addEventListener("click",()=>detail(c));
  const link=node("a","order","前往肯德基 ↗");
  link.href="https://www.kfcclub.com.tw/";link.target="_blank";link.rel="noopener noreferrer";
- buttons.append(open,link);a.append(buttons);return a;
+ const share=node("button","share","↗ 分享");
+ share.type="button";share.setAttribute("aria-label","複製優惠碼 "+c.code+" 的分享連結");
+ share.addEventListener("click",()=>copyShareLink(c.code,share));
+ buttons.append(open,share,link);a.append(buttons);return a;
 }
 function render(){
  const list=getFiltered();$("resultCount").textContent=format(list.length);
- $("status").textContent="共 "+format(coupons.length)+" 張優惠券，符合條件 "+format(list.length)+" 張";
+ const shared=$("sharedView");
+ if(shared){
+  shared.hidden=!state.sharedCode;
+  if(state.sharedCode)$("sharedCode").textContent="#"+state.sharedCode;
+ }
+ $("status").textContent=state.sharedCode?(list.length?"已找到指定的優惠券":"目前資料中找不到此優惠碼，可能已過期或尚未收錄"):"共 "+format(coupons.length)+" 張優惠券，符合條件 "+format(list.length)+" 張";
  const target=$("grid");target.replaceChildren();const fragment=document.createDocumentFragment();
  for(const c of list.slice(0,400))fragment.append(card(c));
  target.append(fragment);$("empty").hidden=list.length>0;
  if(list.length>400)$("status").textContent+=" · 先顯示前 400 筆";
 }
 function reset(){
- Object.assign(state,{search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},knownOnly:false,favoritesOnly:false});
+ Object.assign(state,{search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},favoritesOnly:false,sharedCode:""});
+ const url=new URL(window.location.href);
+ if(url.searchParams.has("coupon")){
+  url.searchParams.delete("coupon");
+  window.history.replaceState(null,"",url.pathname+url.search+url.hash);
+ }
  for(const id of ["search","sort","budget","minPrice","maxPrice"])$(id).value=state[id];
  $("budgetError").textContent="";
  document.querySelectorAll("[data-food]").forEach(b=>{b.dataset.mode="all";b.textContent=b.dataset.food+" · 不限";b.setAttribute("aria-pressed","false");});
- for(const id of ["knownOnly","favoritesOnly"])$(id).checked=false;
+ $("favoritesOnly").checked=false;
  render();
 }
 function initTheme(){
@@ -242,7 +282,8 @@ function bind(){
    $("itemFilters").append(b);
  }
  initTheme();
- for(const id of ["knownOnly","favoritesOnly"])$(id).addEventListener("change",e=>{state[id]=e.target.checked;render();});
+ $("favoritesOnly").addEventListener("change",e=>{state.favoritesOnly=e.target.checked;render();});
+ $("showAll").addEventListener("click",reset);
  $("reset").addEventListener("click",reset);$("emptyReset").addEventListener("click",reset);
  $("closeDetail").addEventListener("click",()=>$("detail").close());
  $("detail").addEventListener("click",e=>{if(e.target===$("detail"))$("detail").close();});
@@ -310,6 +351,8 @@ function presentCoupons(data,singles,officialSingles=null){
  render();
 }
 async function init(){
+ const target=new URLSearchParams(window.location.search).get("coupon");
+ if(target&&/^\\d{3,12}$/.test(target))state.sharedCode=target;
  bind();
  let officialData=null,officialPrices=null,communityData=null,communityPrices=null;
  let officialIssue=null,communityIssue=null;
@@ -356,6 +399,6 @@ async function init(){
  }
 }
 
-window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate};
+window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate,shareUrl};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
