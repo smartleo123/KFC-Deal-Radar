@@ -119,3 +119,22 @@
 
 .favorite-note{font-size:11px;line-height:1.55;color:#77766e}
 [data-theme="dark"] .favorite-note{color:#bbb0b4}
+
+/* Compact coupon card: title already contains its coupon number. */
+.coupon-top{padding:16px 17px 13px}
+.coupon-head{align-items:flex-start;gap:10px}
+.coupon-head .coupon-title{flex:1;min-width:0;min-height:0;margin:1px 0 8px;font-size:17px;line-height:1.42;overflow-wrap:anywhere}
+.coupon-head-actions{flex:none;gap:6px}
+.coupon-head .share-top{padding:8px 9px;min-height:34px}
+.coupon-head .fav{width:34px;height:34px}
+.coupon-top .items{min-height:0;margin:9px 0 0;font-size:13px;line-height:1.6}
+.coupon-top .pill-row{min-height:0}
+.coupon-top .validity{margin:9px 0 0;padding:8px 9px}
+.coupon .pricebar{padding:14px 17px}
+.coupon .card-actions{padding:11px 17px 16px}
+@media(max-width:610px){
+ .coupon-top{padding:15px 15px 12px}
+ .coupon-head .coupon-title{font-size:17px}
+ .coupon .pricebar{padding:13px 15px}
+ .coupon .card-actions{padding:10px 15px 15px}
+}
