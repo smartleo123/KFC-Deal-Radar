@@ -77,21 +77,47 @@ def discovery_codes():
         return []
 
 def seed_codes(existing):
+    """Fairly rotate known/discovered codes; scan near current observed series."""
     known=sorted({int(k) for k in existing if str(k).isdigit()})
     discovered=discovery_codes()
-    start=int(os.environ.get("KFC_SCAN_START","24000"))
-    end=int(os.environ.get("KFC_SCAN_END","26000"))
-    cursor=int(existing.get("_scan_cursor",start)) if isinstance(existing,dict) else start
-    if end<=start:raise ValueError("Invalid scan range")
-    # Limit repeated checks; prioritize a few known and discovered codes,
-    # reserve at least 20% for independent rotating range discovery.
     budget=max(1,MAX_CHECKS)
-    known_limit=min(12,budget//4)
-    discovery_limit=max(0,budget-known_limit-max(1,budget//5))
-    rolling_count=max(1,budget-known_limit-discovery_limit)
-    rolling=[start+(cursor-start+i)%(end-start) for i in range(rolling_count)]
-    candidates=list(dict.fromkeys(known[:known_limit]+discovered[:discovery_limit]+rolling))
-    return candidates[:budget],start+(cursor-start+rolling_count)%(end-start)
+    anchor=max(known+discovered,default=int(os.environ.get("KFC_SCAN_START","24000")))
+    margin=max(100,int(os.environ.get("KFC_SCAN_MARGIN","2000")))
+    start=max(1,anchor-margin)
+    end=anchor+margin+1
+    width=end-start
+    known_offset=int(existing.get("_known_offset",0))
+    discovery_offset=int(existing.get("_discovery_offset",0))
+    scan_cursor=existing.get("_scan_cursor")
+    cursor=int(scan_cursor) if scan_cursor is not None else start
+    if not (start<=cursor<end):cursor=start
+
+    known_budget=min(len(known),budget//4)
+    discovered_budget=min(len(discovered),budget//2)
+    scan_budget=max(1,budget-known_budget-discovered_budget)
+
+    def rotated(values,offset,limit):
+        return [values[(offset+i)%len(values)] for i in range(min(limit,len(values)))] if values else []
+
+    selected=list(dict.fromkeys(
+        rotated(known,known_offset,known_budget)+
+        rotated(discovered,discovery_offset,discovered_budget)+
+        [start+(cursor-start+i)%width for i in range(scan_budget)]
+    ))
+    advanced=scan_budget
+    while len(selected)<budget and advanced<width:
+        candidate=start+(cursor-start+advanced)%width
+        if candidate not in selected:selected.append(candidate)
+        advanced+=1
+    next_meta={
+        "cursor":start+(cursor-start+advanced)%width,
+        "known_offset":(known_offset+known_budget)%max(1,len(known)),
+        "discovery_offset":(discovery_offset+discovered_budget)%max(1,len(discovered)),
+        "window_start":start,
+        "window_end":end,
+        "discovered_count":len(discovered),
+    }
+    return selected[:budget],next_meta
 
 def fetch_coupon(code):
     voucher=post("/customer/v1/getEVoucherAPI",{"voucherNo":str(code),"phone":"","memberId":"","orderType":"2","mealPeriod":"3","shopCode":SHOP})
@@ -152,7 +178,12 @@ def main():
     previous=json.loads(file.read_text()) if file.exists() else {}
     saved=dict(previous.get("coupon_by_code") or {})
     meta=dict(previous.get("scan") or {})
-    codes,cursor=seed_codes({**saved,"_scan_cursor":meta.get("cursor",int(os.environ.get("KFC_SCAN_START","24000")))})
+    codes,next_scan=seed_codes({
+        **saved,
+        "_scan_cursor":meta.get("cursor"),
+        "_known_offset":meta.get("known_offset",0),
+        "_discovery_offset":meta.get("discovery_offset",0),
+    })
     # Fail safe: the collector must prove access before modifying a valid snapshot.
     initialize_shop()
     checked=0
@@ -181,7 +212,7 @@ def main():
     # Keep a complete, self-owned snapshot; do not write a zero-count file over data.
     if not saved:
         print("No confirmed codes yet; waiting for next scan cycle")
-    result={"coupon_by_code":saved,"coupon_list":sorted(saved.values(),key=lambda x:x["price"]),"count":len(saved),"last_update":datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S"),"source":"KFC Taiwan ordering API (unofficial integration)","scan":{"cursor":cursor,"checked":checked,"verified_in_run":verified,"errors":failed,"max_checks":MAX_CHECKS,"shop_code":SHOP,"date":today}}
+    result={"coupon_by_code":saved,"coupon_list":sorted(saved.values(),key=lambda x:x["price"]),"count":len(saved),"last_update":datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S"),"source":"KFC Taiwan ordering API (unofficial integration)","scan":{**next_scan,"checked":checked,"verified_in_run":verified,"errors":failed,"max_checks":MAX_CHECKS,"shop_code":SHOP,"date":today}}
     temp=file.with_suffix(".tmp")
     temp.write_text(json.dumps(result,ensure_ascii=False,separators=(",",":")),encoding="utf-8")
     temp.replace(file)
