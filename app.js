@@ -145,23 +145,43 @@ function bind(){
  $("closeDetail").addEventListener("click",()=>$("detail").close());
  $("detail").addEventListener("click",e=>{if(e.target===$("detail"))$("detail").close();});
 }
-function loadScript(name){
+function loadScript(name,origin){
  return new Promise((resolve,reject)=>{
-  const s=document.createElement("script");s.src=SOURCE+"/"+name+"?t="+Date.now();s.async=true;
-  const timer=setTimeout(()=>{s.remove();reject(Error("載入資料逾時"));},20000);
-  s.onload=()=>{clearTimeout(timer);resolve();};
-  s.onerror=()=>{clearTimeout(timer);reject(Error("無法讀取 KCouper 資料"));};
+  const s=document.createElement("script");
+  s.src=(origin==="live"?SOURCE+"/":"./")+name+"?t="+Date.now();
+  s.async=true;
+  let done=false;
+  const complete=(error)=>{if(done)return;done=true;clearTimeout(timer);s.remove();error?reject(error):resolve();};
+  const timer=setTimeout(()=>complete(Error("載入逾時："+name)),12000);
+  s.onload=()=>complete();
+  s.onerror=()=>complete(Error("無法讀取："+name));
   document.head.append(s);
  });
+}
+async function loadLatest(name,globalName){
+  try{
+    await loadScript(name,"live");
+    if(!window[globalName])throw Error(name+" 缺少必要資料");
+    return "live";
+  }catch(err){
+    // Never substitute invented coupons: use last successful published snapshot.
+    window[globalName]=undefined;
+    await loadScript(name,"snapshot");
+    if(!window[globalName])throw Error(name+" 備援資料無效");
+    return "snapshot";
+  }
 }
 async function init(){
  bind();
  try{
-  await Promise.all([loadScript("coupon.js"),loadScript("single.js").catch(()=>{})]);
+  const [couponSource,priceSource]=await Promise.all([
+    loadLatest("coupon.js","COUPON_DICT"),
+    loadLatest("single.js","SINGLE_DICT").catch(()=> "unavailable")
+  ]);
   const d=window.COUPON_DICT;
   if(!d||!Array.isArray(d.coupon_list))throw Error("優惠資料格式異常");
   coupons=d.coupon_list.map(c=>enrich(c,window.SINGLE_DICT)).filter(Boolean).filter(c=>!c.end_date||new Date(c.end_date+"T23:59:59+08:00").getTime()>=Date.now());
-  $("updated").textContent="上游更新："+(d.last_update||"未提供");
+  $("updated").textContent=(couponSource==="live"?"即時來源":"備援快照")+" · 上游更新："+(d.last_update||"未提供")+(priceSource==="unavailable"?" · 單點價格暫無資料":"");
   $("total").textContent=format(coupons.length);
   const known=coupons.filter(c=>c.percent!==null);
   $("known").textContent=format(known.length);
