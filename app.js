@@ -3,7 +3,6 @@
 const SOURCE="https://winedays.github.io/KCouper";
 const $=id=>document.getElementById(id);
 const drinkRE=/飲料|可樂|百事|雪碧|七喜|汽水|紅茶|綠茶|奶茶|咖啡|拿鐵|美式|檸檬茶|檸檬風味|果汁|冰茶|氣泡水|烏龍茶|無糖茶|冷泡茶|鮮奶茶|激浪|蜜桃茶/;
-const categories={可樂:/可樂|百事/,紅茶:/紅茶|檸檬茶|檸檬風味|冰茶|蜜桃茶/,綠茶:/綠茶|無糖茶|烏龍茶|冷泡茶/,奶茶:/奶茶|鮮奶茶/,咖啡:/咖啡|拿鐵|美式/,果汁:/果汁/,其他:/汽水|雪碧|七喜|激浪|氣泡水|飲料/};
 const foodGroups={
  "炸雞":/炸雞|咔啦脆雞|雞腿桶|雞翅|雞塊|雞米花|雞柳|雞排|雞腿排|爆脆雞|雞腿肉/,
  "漢堡":/漢堡|雞腿堡|脆雞堡|起司堡|蝦堡|牛肉堡|花生堡|烤雞堡/,
@@ -24,7 +23,7 @@ const format=n=>new Intl.NumberFormat("zh-TW").format(n);
 const money=n=>"NT$"+format(n);
 const norm=s=>String(s||"").replace(/\s+/g,"").toLowerCase();
 const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=content;return e;};
-const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},drink:"all",type:"",includeOptions:false,knownOnly:false,favoritesOnly:false};
+const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},knownOnly:false,favoritesOnly:false};
 let coupons=[],favorites;
 try{favorites=new Set(JSON.parse(localStorage.getItem("kfc-radar-favorites")||"[]").map(String));}catch{favorites=new Set();}
 const aliases={"原蛋":"原味蛋撻","小薯":"香酥脆薯(小)","中薯":"香酥脆薯(中)","大薯":"香酥脆薯(大)","4雞塊":"上校雞塊4塊","8雞塊":"上校雞塊8塊"};
@@ -62,14 +61,10 @@ function enrich(c,dict){
 }
 function getFiltered(){
  const list=coupons.filter(c=>{
-  if(state.search&&!norm([c.code,c.name,...itemNames(c,state.includeOptions)].join(" ")).includes(norm(state.search)))return false;
+  if(state.search&&!norm([c.code,c.name,...itemNames(c)].join(" ")).includes(norm(state.search)))return false;
   if(!withinBudget(c.price,state.minPrice,state.maxPrice))return false;
   const groups=matchingFoodGroups(c);
   if(Object.entries(state.food).some(([key,mode])=>mode==="include"&&!groups[key]||mode==="exclude"&&groups[key]))return false;
-  const drinks=drinksFor(c,state.includeOptions);
-  if(state.drink==="yes"&&!drinks.length)return false;
-  if(state.drink==="no"&&drinks.length)return false;
-  if(state.type&&!drinks.some(n=>categories[state.type].test(n)))return false;
   if(state.knownOnly&&c.percent===null)return false;
   if(state.favoritesOnly&&!favorites.has(c.code))return false;
   return true;
@@ -112,7 +107,7 @@ function card(c){
  });
  head.append(fav);top.append(head,node("h4","",c.name||"優惠券 "+c.code));
  const pills=node("div","pill-row");
- if(drinksFor(c,state.includeOptions).length)pills.append(node("span","pill drink","🥤 含飲料"));
+ if(drinksFor(c).length)pills.append(node("span","pill drink","🥤 含飲料"));
  if(c.end_date)pills.append(node("span","pill","期限 "+c.end_date));
  top.append(pills,node("p","items",(c.items||[]).slice(0,6).map(i=>i.name+(Number(i.count)>1?" ×"+i.count:"")).join(" · ")));
  a.append(top);
@@ -139,13 +134,12 @@ function render(){
  if(list.length>400)$("status").textContent+=" · 先顯示前 400 筆";
 }
 function reset(){
- Object.assign(state,{search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},drink:"all",type:"",includeOptions:false,knownOnly:false,favoritesOnly:false});
+ Object.assign(state,{search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},knownOnly:false,favoritesOnly:false});
  for(const id of ["search","sort","budget","minPrice","maxPrice"])$(id).value=state[id];
  $("budgetError").textContent="";
  document.querySelectorAll("[data-food]").forEach(b=>{b.dataset.mode="all";b.textContent=b.dataset.food+" · 不限";b.setAttribute("aria-pressed","false");});
- for(const id of ["includeOptions","knownOnly","favoritesOnly"])$(id).checked=false;
- document.querySelectorAll("[data-drink]").forEach(b=>{const on=b.dataset.drink==="all";b.classList.toggle("active",on);b.setAttribute("aria-pressed",String(on));});
- $("drinkTypes").querySelectorAll("button").forEach((b,i)=>b.classList.toggle("active",i===0));render();
+ for(const id of ["knownOnly","favoritesOnly"])$(id).checked=false;
+ render();
 }
 function initTheme(){
  let stored="light";
@@ -191,18 +185,7 @@ function bind(){
    $("itemFilters").append(b);
  }
  initTheme();
- for(const id of ["includeOptions","knownOnly","favoritesOnly"])$(id).addEventListener("change",e=>{state[id]=e.target.checked;render();});
- document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
-  state.drink=b.dataset.drink;document.querySelectorAll("[data-drink]").forEach(x=>{const on=x===b;x.classList.toggle("active",on);x.setAttribute("aria-pressed",String(on));});render();
- }));
- for(const name of ["不限",...Object.keys(categories)]){
-  const b=node("button",name==="不限"?"active":"",name);b.type="button";
-  b.addEventListener("click",()=>{
-   state.type=name==="不限"?"":name;
-   $("drinkTypes").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));
-   if(state.type&&state.drink==="no")document.querySelector('[data-drink="yes"]').click();else render();
-  });$("drinkTypes").append(b);
- }
+ for(const id of ["knownOnly","favoritesOnly"])$(id).addEventListener("change",e=>{state[id]=e.target.checked;render();});
  $("reset").addEventListener("click",reset);$("emptyReset").addEventListener("click",reset);
  $("closeDetail").addEventListener("click",()=>$("detail").close());
  $("detail").addEventListener("click",e=>{if(e.target===$("detail"))$("detail").close();});
