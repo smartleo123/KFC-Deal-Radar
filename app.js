@@ -170,11 +170,7 @@ function card(c){
  a.append(top);
  const bar=node("div","pricebar"),prices=node("div","price");
  prices.append(node("strong","",money(c.price)));
- if(c.original!==null){
-  const originalLabel=c.priceSource==="official"?"官網單點合計":c.priceSource==="mixed"?"單點參考價":"來源提供原價";
-  prices.append(node("span","original",money(c.original)));
-  prices.append(node("span","price-origin",originalLabel));
- }
+ if(c.original!==null)prices.append(node("span","original",money(c.original)));
  bar.append(prices);
  const saving=node("div","discount"+(c.percent===null?" unknown":""));
  saving.append(node("span","",c.percent===null?"原價未確認":c.percent+"% OFF"));
