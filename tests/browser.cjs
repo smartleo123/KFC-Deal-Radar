@@ -7,9 +7,11 @@ async function main(){
  const official=JSON.parse(fs.readFileSync("data/official.json","utf8"));
  const singles=JSON.parse(fs.readFileSync("data/singles.json","utf8"));
  assert(official.coupon_list.length>0,"Fixture must contain coupons");
- const dom=new JSDOM(html,{url:"https://smartleo123.github.io/KFC-Deal-Radar/",runScripts:"outside-only"});
+ const dom=new JSDOM(html,{url:"https://smartleo123.github.io/KFC-Deal-Radar/?coupon="+official.coupon_list[0].coupon_code,runScripts:"outside-only"});
  const {window:w}=dom;
  const errors=[];
+ let copiedLink="";
+ Object.defineProperty(w.navigator,"clipboard",{configurable:true,value:{writeText:async value=>{copiedLink=value;}}});
  w.addEventListener("error",e=>errors.push(e.error||e.message));
  w.fetch=async url=>({
    ok:true,
@@ -33,6 +35,19 @@ async function main(){
  const $=id=>w.document.getElementById(id);
  console.log("Status:",$("status").textContent);
  console.log("Rendered cards:",w.document.querySelectorAll("article.coupon").length);
+ assert.equal(w.document.querySelectorAll("article.coupon").length,1,"Deep link must show only the selected coupon");
+ assert.equal($("sharedView").hidden,false,"Shared coupon banner must appear");
+ assert.equal($("sharedCode").textContent,"#"+official.coupon_list[0].coupon_code);
+ const firstShare=w.document.querySelector("article.coupon .share");
+ assert(firstShare,"Shared coupon card must include a share button");
+ firstShare.click();
+ await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(copiedLink,"https://smartleo123.github.io/KFC-Deal-Radar/?coupon="+official.coupon_list[0].coupon_code,"Share must copy a deep link, not just the code");
+ assert.equal(firstShare.textContent,"✓ 已複製","Copy success should be visible");
+ $("showAll").click();
+ assert.equal(w.location.search,"","View all must remove shared coupon query");
+ assert.equal($("sharedView").hidden,true,"Shared banner should disappear after viewing all");
+ assert(!w.document.querySelector("#knownOnly"),"Obsolete discount-calculable filter must not exist");
  if(errors.length)throw errors[0];
  assert.notEqual($("total").textContent,"—","Total must render");
  assert(w.document.querySelectorAll("article.coupon").length>0,"Cards must render after official data loads");
