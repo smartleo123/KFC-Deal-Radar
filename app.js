@@ -356,7 +356,7 @@ function isValidOnDate(c,now=Date.now()){
   &&(end===null||Number.isFinite(end)&&end>=now);
 }
 function presentCoupons(data,singles,officialSingles=null){
- coupons=data.coupon_list.map(c=>enrich(c,singles,officialSingles)).filter(Boolean).filter(isValidOnDate);
+ coupons=data.coupon_list.map(c=>enrich(c,singles,officialSingles)).filter(Boolean).filter(c=>isValidOnDate(c));
  $("total").textContent=format(coupons.length);
  const known=coupons.filter(c=>c.percent!==null);
  $("known").textContent=format(known.length);
