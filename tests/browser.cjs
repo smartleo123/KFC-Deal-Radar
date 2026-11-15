@@ -40,6 +40,10 @@ async function main(){
  assert.equal($("sharedCode").textContent,"#"+official.coupon_list[0].coupon_code);
  const firstShare=w.document.querySelector("article.coupon .share");
  assert(firstShare,"Shared coupon card must include a share button");
+ assert(firstShare.closest(".coupon-head-actions"),"Share button must appear at the card upper right");
+ assert.equal(w.document.querySelectorAll("article.coupon .card-actions .share").length,0,"Share button must no longer appear in bottom actions");
+ assert(w.document.querySelector("article.coupon .fav"),"Favorite must remain available");
+
  firstShare.click();
  await new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(copiedLink,"https://smartleo123.github.io/KFC-Deal-Radar/?coupon="+official.coupon_list[0].coupon_code,"Share must copy a deep link, not just the code");
