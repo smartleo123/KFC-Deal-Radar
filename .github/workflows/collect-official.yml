@@ -65,6 +65,9 @@ jobs:
           fi
 
   deploy:
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     needs: collect
     runs-on: ubuntu-latest
     if: success()
