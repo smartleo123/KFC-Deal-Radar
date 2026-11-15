@@ -187,7 +187,12 @@ function card(c){
   try{localStorage.setItem("kfc-radar-favorites",JSON.stringify([...favorites]));}catch{}
   render();
  });
- head.append(fav);top.append(head,node("h4","",c.name||"優惠券 "+c.code));
+ const share=node("button","share share-top","↗ 分享");
+ share.type="button";share.setAttribute("aria-label","複製優惠碼 "+c.code+" 的分享連結");
+ share.addEventListener("click",()=>copyShareLink(c.code,share));
+ const topActions=node("div","coupon-head-actions");
+ topActions.append(share,fav);
+ head.append(topActions);top.append(head,node("h4","",c.name||"優惠券 "+c.code));
  const pills=node("div","pill-row");
  if(drinksFor(c).length)pills.append(node("span","pill drink","🥤 含飲料"));
  if(c.source==="kfc_api_verified")pills.append(node("span","pill verified","官方驗證"));
@@ -208,10 +213,7 @@ function card(c){
  open.type="button";open.addEventListener("click",()=>detail(c));
  const link=node("a","order","前往肯德基 ↗");
  link.href="https://www.kfcclub.com.tw/";link.target="_blank";link.rel="noopener noreferrer";
- const share=node("button","share","↗ 分享");
- share.type="button";share.setAttribute("aria-label","複製優惠碼 "+c.code+" 的分享連結");
- share.addEventListener("click",()=>copyShareLink(c.code,share));
- buttons.append(open,share,link);a.append(buttons);return a;
+ buttons.append(open,link);a.append(buttons);return a;
 }
 function render(){
  const list=getFiltered();$("resultCount").textContent=format(list.length);
