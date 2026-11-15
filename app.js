@@ -26,38 +26,90 @@ const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.clas
 const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},knownOnly:false,favoritesOnly:false};
 let coupons=[],favorites;
 try{favorites=new Set(JSON.parse(localStorage.getItem("kfc-radar-favorites")||"[]").map(String));}catch{favorites=new Set();}
-const aliases={"原蛋":"原味蛋撻","小薯":"香酥脆薯(小)","中薯":"香酥脆薯(中)","大薯":"香酥脆薯(大)","4雞塊":"上校雞塊4塊","8雞塊":"上校雞塊8塊"};
-function referencePrice(c,dict){
- const supplied=Number(c.original_price);
- if(Number.isFinite(supplied)&&supplied>0)return supplied;
- if(!dict)return null;
- let sum=0;
- for(const item of c.items||[]){
-  const name=String(item.name||"").trim();
-  if(/不需|響應環保|醬包|湯匙|刀叉及手套/.test(name))continue;
-  let qty=Number(item.count??1);
-  if(!Number.isFinite(qty)||qty<=0)return null;
-  const cleaned=name.replace(/20:00前供應|\(辣\)|\(不辣\)/g,"").trim();
-  let candidates=[name,cleaned,aliases[name],aliases[cleaned]].filter(Boolean);
-  let found=candidates.map(k=>dict[k]).find(x=>x&&Number.isFinite(Number(x.price)));
-  if(!found){
-    const m=cleaned.match(/^(\d+)(?:入|塊)(.+)$/);
-    if(m){qty*=Number(m[1]);found=dict[m[2]];}
+const aliases={
+ "原蛋":"原味蛋撻","小薯":"香酥脆薯(小)","中薯":"香酥脆薯(中)","大薯":"香酥脆薯(大)",
+ "4雞塊":"上校雞塊4塊","8雞塊":"上校雞塊8塊",
+ "雞塊":"上校雞塊4塊","4塊雞塊":"上校雞塊4塊","4塊上校雞塊":"上校雞塊4塊",
+ "無糖綠茶(小)":"冰無糖綠茶(小)","無糖綠茶(中)":"冰無糖綠茶(中)"
+};
+const freeItemsRE=/^(?:不需|響應環保|沾醬已售完|糖醋醬|紙袋|刀叉及手套|吸管|餐巾紙)/;
+const cleanName=s=>String(s||"").replace(/20:00前供應|\((?:辣|不辣)\)|（(?:辣|不辣)）/g,"").replace(/\s+/g,"").trim();
+function lookupUnit(name,primary,secondary){
+ const raw=String(name||"").trim(),cleaned=cleanName(raw);
+ const candidates=[raw,cleaned,aliases[raw],aliases[cleaned]].filter(Boolean);
+ for(const [dict,source] of [[primary,"official"],[secondary,"supplement"]]){
+  if(!dict)continue;
+  for(const key of candidates){
+   const price=Number(dict[key]?.price);
+   if(dict[key]&&Number.isFinite(price)&&price>0)return {price,source};
   }
-  if(!found||!Number.isFinite(Number(found.price)))return null;
-  sum+=Number(found.price)*qty;
  }
- return sum>0?sum:null;
+ return null;
 }
+function pricePart(name,official,other,depth=0){
+ if(depth>3)return null;
+ const cleaned=cleanName(name);
+ if(freeItemsRE.test(cleaned))return {price:0,sources:[]};
+ const direct=lookupUnit(name,official,other);
+ if(direct)return {price:direct.price,sources:[direct.source]};
+ // Count-labelled official coupon items: e.g. 2入原味蛋撻, 2塊咔啦脆雞.
+ const counted=cleaned.match(/^(\d+)(?:入|顆|份|塊)(.+)$/);
+ if(counted){
+  const count=Number(counted[1]),part=counted[2];
+  if(count>0&&count<=30){
+   const base=pricePart(part,official,other,depth+1);
+   if(base)return {price:count*base.price,sources:base.sources};
+  }
+ }
+ // Compose using the official individual menu prices, only when *every*
+ // constituent is resolvable. Unknown bundles are never assigned invented values.
+ if(cleaned.includes("+")||cleaned.includes("＋")){
+  const pieces=cleaned.split(/[+＋]/).filter(Boolean);
+  if(pieces.length>1){
+   let total=0,sources=[];
+   for(const piece of pieces){
+    const sub=pricePart(piece,official,other,depth+1);
+    if(!sub)return null;
+    total+=sub.price;sources.push(...sub.sources);
+   }
+   return {price:total,sources};
+  }
+ }
+ return null;
+}
+function referencePriceInfo(c,dict,officialDict){
+ const primary=officialDict||null,secondary=dict||null;
+ let sum=0,sources=[],resolved=0;
+ const entries=(c.items||[]).filter(i=>!freeItemsRE.test(cleanName(i.name)));
+ for(const item of entries){
+  const count=Number(item.count??1);
+  if(!Number.isFinite(count)||count<=0)return {price:null,source:null};
+  const part=pricePart(item.name,primary,secondary);
+  if(!part)return suppliedPriceInfo(c);
+  sum+=part.price*count;sources.push(...part.sources);resolved++;
+ }
+ if(resolved&&sum>0){
+  const source=sources.every(x=>x==="official")?"official":"mixed";
+  return {price:sum,source};
+ }
+ return suppliedPriceInfo(c);
+}
+function suppliedPriceInfo(c){
+ const price=Number(c.original_price);
+ return Number.isFinite(price)&&price>0?{price,source:"provided"}:{price:null,source:null};
+}
+function referencePrice(c,dict,officialDict){return referencePriceInfo(c,dict,officialDict).price;}
+
 function itemNames(c,include=false){return(c.items||[]).flatMap(i=>[i.name,...(include?(i.flavors||[]).map(f=>f.name):[])]).filter(Boolean);}
 function drinksFor(c,include=false){return itemNames(c,include).filter(n=>drinkRE.test(n));}
-function enrich(c,dict){
+function enrich(c,dict,officialDict){
  const price=Number(c.price);
  if(!Number.isFinite(price)||price<0||!c.coupon_code)return null;
- const original=referencePrice(c,dict);
+ const reference=referencePriceInfo(c,dict,officialDict);
+ const original=reference.price;
  const saving=original!==null&&original>price?original-price:null;
  const percent=saving===null?null:Math.round(saving/original*1000)/10;
- return {...c,price,original,saving,percent,code:String(c.coupon_code)};
+ return {...c,price,original,saving,percent,priceSource:reference.source,code:String(c.coupon_code)};
 }
 function getFiltered(){
  const list=coupons.filter(c=>{
@@ -84,6 +136,7 @@ function detail(c){
  const host=$("detailContent");host.replaceChildren();
  host.append(node("span","code","優惠代碼 #"+c.code),node("h2","detail-title",c.name||"優惠券"));
  host.append(node("p","detail-meta","售價 "+money(c.price)+" · "+(c.percent===null?"原價未確認":("折扣 "+c.percent+"% · 省 "+money(c.saving)))));
+ if(c.priceSource)host.append(node("p","detail-meta",c.priceSource==="official"?"折扣參考：肯德基點餐 API 單點價格合計":c.priceSource==="mixed"?"折扣參考：官方單點價格及公開單點參考價合計":"折扣參考：來源提供的原價，尚未完整比對官方單點定價"));
  host.append(node("p","detail-meta","有效期間："+(c.start_date||"未提供")+" ～ "+(c.end_date||"未提供")));
  if(c.source==="kfc_api_verified")host.append(node("p","detail-meta","此優惠碼已通過肯德基點餐 API 驗證；實際使用仍以門市為準。"));
  const list=node("ul","detail-list");
@@ -110,12 +163,18 @@ function card(c){
  const pills=node("div","pill-row");
  if(drinksFor(c).length)pills.append(node("span","pill drink","🥤 含飲料"));
  if(c.source==="kfc_api_verified")pills.append(node("span","pill verified","官方驗證"));
- if(c.end_date)pills.append(node("span","pill","期限 "+c.end_date));
- top.append(pills,node("p","items",(c.items||[]).slice(0,6).map(i=>i.name+(Number(i.count)>1?" ×"+i.count:"")).join(" · ")));
+ const dates=node("p","validity","優惠期間："+
+  (c.start_date?String(c.start_date).replace(/\\//g,"-"):"開始日未提供")+
+  " ～ "+(c.end_date?String(c.end_date).replace(/\\//g,"-"):"截止日未提供"));
+ top.append(pills,dates,node("p","items",(c.items||[]).slice(0,6).map(i=>i.name+(Number(i.count)>1?" ×"+i.count:"")).join(" · ")));
  a.append(top);
  const bar=node("div","pricebar"),prices=node("div","price");
  prices.append(node("strong","",money(c.price)));
- if(c.original!==null)prices.append(node("span","original",money(c.original)));
+ if(c.original!==null){
+  const originalLabel=c.priceSource==="official"?"官網單點合計":c.priceSource==="mixed"?"單點參考價":"來源提供原價";
+  prices.append(node("span","original",money(c.original)));
+  prices.append(node("span","price-origin",originalLabel));
+ }
  bar.append(prices);
  const saving=node("div","discount"+(c.percent===null?" unknown":""));
  saving.append(node("span","",c.percent===null?"原價未確認":c.percent+"% OFF"));
@@ -245,8 +304,8 @@ function isValidOnDate(c,now=Date.now()){
  const stamp=Date.parse(String(c.end_date).replace(/\//g,"-").slice(0,10)+"T23:59:59+08:00");
  return Number.isFinite(stamp)&&stamp>=now;
 }
-function presentCoupons(data,singles,label){
- coupons=data.coupon_list.map(c=>enrich(c,singles)).filter(Boolean).filter(isValidOnDate);
+function presentCoupons(data,singles,label,officialSingles=null){
+ coupons=data.coupon_list.map(c=>enrich(c,singles,officialSingles)).filter(Boolean).filter(isValidOnDate);
  $("updated").textContent=label+(data.last_update?" · 更新："+data.last_update:"");
  $("total").textContent=format(coupons.length);
  const known=coupons.filter(c=>c.percent!==null);
@@ -265,7 +324,7 @@ async function init(){
    const label="優惠資料"
     +(officialData?.last_update?" · 官方更新："+officialData.last_update:"")
     +(communityData?.last_update?" · 補充更新："+communityData.last_update:"");
-  presentCoupons({coupon_list:merged,last_update:""},prices,label);
+  presentCoupons({coupon_list:merged,last_update:""},prices,label,officialPrices);
  };
  // Show verified coupons as soon as official data arrives; don't discard
  // community coupons just because any official snapshot exists.
@@ -306,6 +365,6 @@ async function init(){
  }
 }
 
-window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate};
+window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
