@@ -155,13 +155,22 @@ def fetch_coupon(code):
 def fetch_singles():
     response=post("/menu/v1/GetQueryMenu",{"ismember":"0","mealperiod":"0","orderdate":"","ordertype":"0","parentid":"0","shopcode":""})
     menu=(response.get("Data") or {}).get("Menu") or []
-    titles={"炸雞/紙包雞","漢堡/飯","蛋撻","點心/飲料","早餐"}
+    # Read all current official menu categories instead of a hardcoded title
+    # whitelist; category names/products change with promotions and seasons.
     result={}
-    for m in menu:
-        if m.get("Title") not in titles:continue
-        foods=post("/menu/v1/GetQueryFood",{"IsPKAPP":"0","ismember":"0","mealperiod":"0","menuid":m.get("MenuID"),"orderdate":"","ordertype":"0","parentid":"0","shopcode":""})
+    for m in menu[:50]:
+        title=str(m.get("Title") or "")
+        if any(term in title for term in ("優惠券", "優惠碼")):continue
+        menu_id=m.get("MenuID")
+        if not menu_id:continue
+        try:
+            foods=post("/menu/v1/GetQueryFood",{"IsPKAPP":"0","ismember":"0","mealperiod":"0","menuid":menu_id,"orderdate":"","ordertype":"0","parentid":"0","shopcode":""})
+        except RuntimeError as exc:
+            print(f"Skip unavailable menu {menu_id}: {exc}",flush=True)
+            continue
         for section in (foods.get("Data") or {}).get("Foods") or []:
-            if "套餐" in str(section.get("Title")):continue
+            if any(term in str(section.get("Title") or "") for term in ("套餐", "優惠券", "優惠碼")):
+                continue
             for d in section.get("Details") or []:
                 price=d.get("Upa_Group")
                 if not isinstance(price,(int,float)) or price<=0:continue
