@@ -7,6 +7,8 @@ async function main(){
  const official=JSON.parse(fs.readFileSync("data/official.json","utf8"));
  const singles=JSON.parse(fs.readFileSync("data/singles.json","utf8"));
  assert(official.coupon_list.length>0,"Fixture must contain coupons");
+ assert(html.includes('rel="icon" type="image/svg+xml" href="./favicon.svg"'),"Site must point to the published favicon");
+ assert(fs.readFileSync("favicon.svg","utf8").includes("<svg"),"Favicon asset must exist in repo");
  const dom=new JSDOM(html,{url:"https://smartleo123.github.io/KFC-Deal-Radar/?coupon="+official.coupon_list[0].coupon_code,runScripts:"outside-only"});
  const {window:w}=dom;
  const errors=[];
