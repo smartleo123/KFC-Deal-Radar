@@ -48,6 +48,10 @@ async function main(){
  assert(officialCard?.querySelector(".pill.verified")?.textContent==="官方驗證","Verified coupon must have official badge");
  assert(officialCard?.querySelector(".validity")?.textContent.includes(sample.end_date),"Coupon card must display end date");
  assert(officialCard?.querySelector(".validity")?.textContent.includes(sample.start_date),"Coupon card must display start date");
+ assert.equal(w.document.querySelectorAll(".price-origin").length,0,"Cards must not repeat pricing source labels");
+ assert.equal(w.document.querySelectorAll(".pricing-note").length,1,"One shared pricing note must exist");
+ assert($("pricingNote").textContent.includes("肯德基官網單點定價"),"Pricing note must explain the comparison basis");
+ assert(w.document.querySelector(".item-filter .filter-heading")?.textContent==="餐點品項","Meal category label must remain");
  const foodButton=[...w.document.querySelectorAll("[data-food]")].find(b=>b.dataset.food==="飲料");
  assert(foodButton,"Food filter must include drinks");
  foodButton.click();
