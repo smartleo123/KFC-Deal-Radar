@@ -8,7 +8,7 @@ import urllib.request
 from urllib.error import URLError, HTTPError
 
 BASE=os.environ.get("PAGES_URL","https://smartleo123.github.io/KFC-Deal-Radar/").rstrip("/")+"/"
-PATHS={"index.html":"text/html","app.js":"javascript","data/official.json":"json","data/singles.json":"json"}
+PATHS={"index.html":"text/html","app.js":"javascript","favicon.svg":"svg","data/official.json":"json","data/singles.json":"json"}
 
 def get(path):
     req=urllib.request.Request(BASE+path+"?health="+str(int(time.time())),headers={"Cache-Control":"no-cache","User-Agent":"KFC-Deal-Radar-healthcheck/1.0"})
@@ -28,6 +28,8 @@ def main():
                     data=json.loads(body)
                     if path.endswith("official.json") and not (isinstance(data.get("coupon_list"),list) and len(data["coupon_list"])>0):
                         raise ValueError("No official coupons")
+                elif path=="favicon.svg" and not (b"<svg" in body and b"#c90000" in body):
+                    raise ValueError("Missing K favicon artwork")
                 elif path=="app.js" and b"loadOfficialSnapshot" not in body:
                     raise ValueError("Stale app.js")
                 elif path=="index.html" and b'<div id="grid"' not in body:
