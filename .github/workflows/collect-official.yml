@@ -58,5 +58,6 @@ jobs:
             echo "No official data changes"
           else
             git commit -m "data: update KFC API verified coupons and menu prices"
+            git pull --rebase origin main
             git push origin HEAD:main
           fi
