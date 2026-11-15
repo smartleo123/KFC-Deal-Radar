@@ -116,3 +116,6 @@
  .coupon-head .share-top{font-size:12px;padding:9px 10px}
  .card-actions{gap:9px}
 }
+
+.favorite-note{font-size:11px;line-height:1.55;color:#77766e}
+[data-theme="dark"] .favorite-note{color:#bbb0b4}
