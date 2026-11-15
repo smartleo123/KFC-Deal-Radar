@@ -247,7 +247,7 @@ function isValidOnDate(c,now=Date.now()){
 }
 function presentCoupons(data,singles,label){
  coupons=data.coupon_list.map(c=>enrich(c,singles)).filter(Boolean).filter(isValidOnDate);
- $("updated").textContent=label+" · 更新："+(data.last_update||"未提供");
+ $("updated").textContent=label+(data.last_update?" · 更新："+data.last_update:"");
  $("total").textContent=format(coupons.length);
  const known=coupons.filter(c=>c.percent!==null);
  $("known").textContent=format(known.length);
