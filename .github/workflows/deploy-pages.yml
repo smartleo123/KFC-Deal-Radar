@@ -35,7 +35,7 @@ jobs:
       - name: Download fresh KCouper coupon snapshot
         run: |
           mkdir -p _site
-          cp index.html app.js style.css .nojekyll _site/
+          cp index.html app.js style.css favicon.svg .nojekyll _site/
           mkdir -p _site/data
           if [ -f data/official.json ]; then cp data/official.json _site/data/official.json; fi
           if [ -f data/singles.json ]; then cp data/singles.json _site/data/singles.json; fi
