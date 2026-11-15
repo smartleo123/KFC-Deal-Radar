@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const drinkRE=/飲料|可樂|百事|雪碧|七喜|汽水|紅茶|綠茶|奶茶|咖啡|拿鐵|美式|檸檬茶|檸檬風味|果汁|冰茶|氣泡水|烏龍茶|無糖茶|冷泡茶|鮮奶茶|激浪|蜜桃茶/;
 const categories={可樂:/可樂|百事/,紅茶:/紅茶|檸檬茶|檸檬風味|冰茶|蜜桃茶/,綠茶:/綠茶|無糖茶|烏龍茶|冷泡茶/,奶茶:/奶茶|鮮奶茶/,咖啡:/咖啡|拿鐵|美式/,果汁:/果汁/,其他:/汽水|雪碧|七喜|激浪|氣泡水|飲料/};
 const foodGroups={
- "炸雞":/炸雞|咔啦|脆雞|雞腿桶|雞翅|雞塊|雞米花|雞柳|雞排|雞腿排|爆脆雞|雞腿肉/,
+ "炸雞":/炸雞|咔啦脆雞|雞腿桶|雞翅|雞塊|雞米花|雞柳|雞排|雞腿排|爆脆雞|雞腿肉/,
  "漢堡":/漢堡|雞腿堡|脆雞堡|起司堡|蝦堡|牛肉堡|花生堡|烤雞堡/,
  "蛋撻":/蛋撻|原蛋|葡式蛋塔|蛋塔/,
  "薯條／點心":/薯條|香酥脆薯|雞米花|雞塊|洋蔥圈|薯球|地瓜球|點心|蝦塊/,
@@ -14,7 +14,7 @@ const foodGroups={
 };
 function matchingFoodGroups(c){
  const names=(c.items||[]).map(i=>String(i.name||""));
- return Object.fromEntries(Object.entries(foodGroups).map(([key,re])=>[key,names.some(n=>re.test(n))]));
+ return Object.fromEntries(Object.entries(foodGroups).map(([key,re])=>[key,names.some(n=>re.test(n) && (key!=="炸雞" || !/堡|捲餅/.test(n)))]));
 }
 function withinBudget(price,min,max){
  const low=min===""?null:Number(min),high=max===""?null:Number(max);
