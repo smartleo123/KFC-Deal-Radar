@@ -171,23 +171,47 @@ async function loadLatest(name,globalName){
     return "snapshot";
   }
 }
+async function loadOfficialSnapshot(){
+ const [couponResponse,priceResponse]=await Promise.all([
+  fetch("./data/official.json?t="+Date.now(),{cache:"no-store"}),
+  fetch("./data/singles.json?t="+Date.now(),{cache:"no-store"}).catch(()=>null)
+ ]);
+ if(!couponResponse.ok)throw Error("官方資料尚未建立");
+ const data=await couponResponse.json();
+ if(!Array.isArray(data.coupon_list)||data.coupon_list.length===0)throw Error("官方驗證優惠暫無資料");
+ let singles=null;
+ if(priceResponse?.ok){try{singles=await priceResponse.json();}catch{}}
+ return {data,singles};
+}
+function presentCoupons(data,singles,label){
+ coupons=data.coupon_list.map(c=>enrich(c,singles)).filter(Boolean).filter(c=>!c.end_date||new Date(c.end_date+"T23:59:59+08:00").getTime()>=Date.now());
+ $("updated").textContent=label+" · 更新："+(data.last_update||"未提供");
+ $("total").textContent=format(coupons.length);
+ const known=coupons.filter(c=>c.percent!==null);
+ $("known").textContent=format(known.length);
+ $("best").textContent=known.length?Math.max(...known.map(c=>c.percent))+"%":"—";
+ $("drinks").textContent=format(coupons.filter(c=>drinksFor(c).length).length);
+ render();
+}
 async function init(){
  bind();
  try{
+  // Officially verified KFC data is preferred whenever the collector has data.
+  // Fall back to the original community source only when no official snapshot exists.
+  try{
+    const official=await loadOfficialSnapshot();
+    presentCoupons(official.data,official.singles,"肯德基 API 已驗證");
+    return;
+  }catch(error){
+    console.info("Official collector has no usable snapshot; using community fallback",error.message);
+  }
   const [couponSource,priceSource]=await Promise.all([
     loadLatest("coupon.js","COUPON_DICT"),
     loadLatest("single.js","SINGLE_DICT").catch(()=> "unavailable")
   ]);
   const d=window.COUPON_DICT;
   if(!d||!Array.isArray(d.coupon_list))throw Error("優惠資料格式異常");
-  coupons=d.coupon_list.map(c=>enrich(c,window.SINGLE_DICT)).filter(Boolean).filter(c=>!c.end_date||new Date(c.end_date+"T23:59:59+08:00").getTime()>=Date.now());
-  $("updated").textContent=(couponSource==="live"?"即時來源":"備援快照")+" · 上游更新："+(d.last_update||"未提供")+(priceSource==="unavailable"?" · 單點價格暫無資料":"");
-  $("total").textContent=format(coupons.length);
-  const known=coupons.filter(c=>c.percent!==null);
-  $("known").textContent=format(known.length);
-  $("best").textContent=known.length?Math.max(...known.map(c=>c.percent))+"%":"—";
-  $("drinks").textContent=format(coupons.filter(c=>drinksFor(c).length).length);
-  render();
+  presentCoupons(d,window.SINGLE_DICT,(couponSource==="live"?"KCouper 社群即時資料":"KCouper 社群備援快照")+(priceSource==="unavailable"?" · 單點價格暫無資料":""));
  }catch(e){
   $("updated").textContent="資料暫時無法取得";
   $("status").textContent="載入失敗："+e.message;
