@@ -85,7 +85,7 @@ function detail(c){
  host.append(node("span","code","優惠代碼 #"+c.code),node("h2","detail-title",c.name||"優惠券"));
  host.append(node("p","detail-meta","售價 "+money(c.price)+" · "+(c.percent===null?"原價未確認":("折扣 "+c.percent+"% · 省 "+money(c.saving)))));
  host.append(node("p","detail-meta","有效期間："+(c.start_date||"未提供")+" ～ "+(c.end_date||"未提供")));
- host.append(node("p","detail-meta",c.source==="kfc_api_verified"?"資料來源：本站查詢肯德基點餐 API 驗證":"資料來源：公開優惠彙整，本站尚未向官方 API 驗證；適用情形以官網為準"));
+ if(c.source==="kfc_api_verified")host.append(node("p","detail-meta","此優惠碼已通過肯德基點餐 API 驗證；實際使用仍以門市為準。"));
  const list=node("ul","detail-list");
  for(const i of c.items||[]){
   const li=node("li","",String(i.name||"餐點")+" × "+(i.count||1));
@@ -109,7 +109,7 @@ function card(c){
  head.append(fav);top.append(head,node("h4","",c.name||"優惠券 "+c.code));
  const pills=node("div","pill-row");
  if(drinksFor(c).length)pills.append(node("span","pill drink","🥤 含飲料"));
- pills.append(node("span","pill "+(c.source==="kfc_api_verified"?"verified":"unverified"),c.source==="kfc_api_verified"?"官方 API 已驗證":"待官方驗證"));
+ if(c.source==="kfc_api_verified")pills.append(node("span","pill verified","官方驗證"));
  if(c.end_date)pills.append(node("span","pill","期限 "+c.end_date));
  top.append(pills,node("p","items",(c.items||[]).slice(0,6).map(i=>i.name+(Number(i.count)>1?" ×"+i.count:"")).join(" · ")));
  a.append(top);
@@ -262,9 +262,7 @@ async function init(){
  const refresh=()=>{
   const merged=mergeCouponLists(officialData?.coupon_list,communityData?.coupon_list);
   const prices={...(communityPrices||{}),...(officialPrices||{})};
-  const confirmed=merged.filter(c=>c.source==="kfc_api_verified").length;
-  const unverified=merged.length-confirmed;
-  const label="已收錄：官方 API 驗證 "+confirmed+" 張 · 其他待驗證 "+unverified+" 張"
+   const label="優惠資料"
     +(officialData?.last_update?" · 官方更新："+officialData.last_update:"")
     +(communityData?.last_update?" · 補充更新："+communityData.last_update:"");
   presentCoupons({coupon_list:merged,last_update:""},prices,label);
