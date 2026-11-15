@@ -56,4 +56,11 @@ const fallbackC={items:[{name:'咔啦雞腿堡(辣)',count:1},{name:'原味蛋�
 const thirdParty={'咔啦雞腿堡(辣)':{price:120}};
 assert.equal(referencePriceInfo(fallbackC,thirdParty,officialMenu).price,169);
 assert.equal(referencePriceInfo(fallbackC,thirdParty,officialMenu).source,'mixed');
+// Regression: future/expired coupons must not be shown before/after their valid window.
+assert.equal(isValidOnDate({start_date:'2026-11-20',end_date:'2026-12-20'},new Date('2026-11-16T12:00:00+08:00').getTime()),false);
+assert.equal(isValidOnDate({start_date:'2026/11/14',end_date:'2026/11/20'},new Date('2026-11-16T12:00:00+08:00').getTime()),true);
+assert.equal(isValidOnDate({start_date:'2026-11-01',end_date:'2026-11-15'},new Date('2026-11-16T12:00:00+08:00').getTime()),false);
+assert.equal(isValidOnDate({end_date:'not-a-date'},new Date('2026-11-16T12:00:00+08:00').getTime()),false);
+assert.equal(enrich({coupon_code:123,price:null,items:[]},{}),null);
+assert.equal(enrich({coupon_code:123,price:'',items:[]},{}),null);
 console.log('Smoke tests passed');
