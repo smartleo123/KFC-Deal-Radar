@@ -82,6 +82,11 @@
 
 /* Visible per-coupon validity and transparent reference-price labels */
 .validity{margin:12px 0 4px;padding:9px 11px;border-radius:9px;background:#f6f3ee;color:#615c54;font-size:12px;line-height:1.55;font-weight:650}
-.price-origin{display:block;margin-top:3px;color:#77776c;font-size:11px;line-height:1.5}
 [data-theme="dark"] .validity{background:#30282b;color:#e1c6ca}
-[data-theme="dark"] .price-origin{color:#c1aeb1}
+
+/* More legible meal-category controls and a single pricing footnote */
+.item-filter > .filter-heading{font-size:16px;line-height:1.5}
+.item-filter .food-filter{font-size:15px;line-height:1.45;padding:11px 14px;min-height:44px}
+.pricing-note{margin:20px 2px 8px;font-size:12px;line-height:1.75;color:#77776d}
+[data-theme="dark"] .pricing-note{color:#bbb0b4}
+@media(max-width:610px){.item-filter > .filter-heading{font-size:16px}.item-filter .food-filter{font-size:15px;padding:10px 12px}}
