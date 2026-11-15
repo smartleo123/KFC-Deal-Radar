@@ -86,6 +86,7 @@ jobs:
           if [ -f data/official.json ]; then cp data/official.json _site/data/official.json; fi
           if [ -f data/singles.json ]; then cp data/singles.json _site/data/singles.json; fi
           python3 scripts/sync_data.py _site
+          python3 scripts/stamp_assets.py _site/index.html "$GITHUB_SHA"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
