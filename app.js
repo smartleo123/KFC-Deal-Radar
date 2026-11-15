@@ -164,8 +164,8 @@ function card(c){
  if(drinksFor(c).length)pills.append(node("span","pill drink","🥤 含飲料"));
  if(c.source==="kfc_api_verified")pills.append(node("span","pill verified","官方驗證"));
  const dates=node("p","validity","優惠期間："+
-  (c.start_date?String(c.start_date).replace(/\\//g,"-"):"開始日未提供")+
-  " ～ "+(c.end_date?String(c.end_date).replace(/\\//g,"-"):"截止日未提供"));
+  (c.start_date?String(c.start_date).replaceAll("/","-"):"開始日未提供")+
+  " ～ "+(c.end_date?String(c.end_date).replaceAll("/","-"):"截止日未提供"));
  top.append(pills,dates,node("p","items",(c.items||[]).slice(0,6).map(i=>i.name+(Number(i.count)>1?" ×"+i.count:"")).join(" · ")));
  a.append(top);
  const bar=node("div","pricebar"),prices=node("div","price");
