@@ -57,11 +57,11 @@ async function main(){
  assert(w.document.querySelectorAll("article.coupon").length>0,"Cards must render after official data loads");
  assert.equal($("empty").hidden,true);
  assert.equal(Number($("total").textContent.replace(/,/g,"")),official.coupon_list.length+1,"Community-only coupon must appear alongside official coupons");
- assert($("grid").textContent.includes("9999988"),"Community-only coupon code must be displayed");
+ assert($("coupon-9999988"),"Community-only coupon must remain in the DOM with its shareable ID");
  assert(!w.document.body.textContent.includes("官方更新："),"Source timestamps must not appear on page");
  assert(!w.document.body.textContent.includes("補充更新："),"Supplement timestamps must not appear on page");
  const cards=[...w.document.querySelectorAll("article.coupon")];
- const extraCard=cards.find(c=>c.textContent.includes("9999988"));
+ const extraCard=cards.find(c=>c.id==="coupon-9999988");
  assert(extraCard && !extraCard.textContent.includes("官方驗證"),"Community-only coupon must have no verification badge");
  const officialCard=cards.find(c=>c.querySelector(".coupon-title")?.textContent.includes(String(sample.coupon_code)));
  assert.equal(w.document.querySelectorAll(".coupon-head .code").length,0,"Repeated coupon-number label must be removed");
