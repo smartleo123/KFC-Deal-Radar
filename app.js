@@ -4,11 +4,27 @@ const SOURCE="https://winedays.github.io/KCouper";
 const $=id=>document.getElementById(id);
 const drinkRE=/飲料|可樂|百事|雪碧|七喜|汽水|紅茶|綠茶|奶茶|咖啡|拿鐵|美式|檸檬茶|檸檬風味|果汁|冰茶|氣泡水|烏龍茶|無糖茶|冷泡茶|鮮奶茶|激浪|蜜桃茶/;
 const categories={可樂:/可樂|百事/,紅茶:/紅茶|檸檬茶|檸檬風味|冰茶|蜜桃茶/,綠茶:/綠茶|無糖茶|烏龍茶|冷泡茶/,奶茶:/奶茶|鮮奶茶/,咖啡:/咖啡|拿鐵|美式/,果汁:/果汁/,其他:/汽水|雪碧|七喜|激浪|氣泡水|飲料/};
+const foodGroups={
+ "炸雞":/炸雞|咔啦|脆雞|雞腿桶|雞翅|雞塊|雞米花|雞柳|雞排|雞腿排|爆脆雞|雞腿肉/,
+ "漢堡":/漢堡|雞腿堡|脆雞堡|起司堡|蝦堡|牛肉堡|花生堡|烤雞堡/,
+ "蛋撻":/蛋撻|原蛋|葡式蛋塔|蛋塔/,
+ "薯條／點心":/薯條|香酥脆薯|雞米花|雞塊|洋蔥圈|薯球|地瓜球|點心|蝦塊/,
+ "飯食／捲餅":/飯|粥|捲餅|墨西哥捲|飯糰/,
+ "飲料":drinkRE
+};
+function matchingFoodGroups(c){
+ const names=(c.items||[]).map(i=>String(i.name||""));
+ return Object.fromEntries(Object.entries(foodGroups).map(([key,re])=>[key,names.some(n=>re.test(n))]));
+}
+function withinBudget(price,min,max){
+ const low=min===""?null:Number(min),high=max===""?null:Number(max);
+ return !(low!==null&&price<low || high!==null&&price>high || low!==null&&high!==null&&low>high);
+}
 const format=n=>new Intl.NumberFormat("zh-TW").format(n);
 const money=n=>"NT$"+format(n);
 const norm=s=>String(s||"").replace(/\s+/g,"").toLowerCase();
 const node=(tag,cls,content)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(content!==undefined)e.textContent=content;return e;};
-const state={search:"",sort:"discount",budget:"",drink:"all",type:"",includeOptions:false,knownOnly:false,favoritesOnly:false};
+const state={search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},drink:"all",type:"",includeOptions:false,knownOnly:false,favoritesOnly:false};
 let coupons=[],favorites;
 try{favorites=new Set(JSON.parse(localStorage.getItem("kfc-radar-favorites")||"[]").map(String));}catch{favorites=new Set();}
 const aliases={"原蛋":"原味蛋撻","小薯":"香酥脆薯(小)","中薯":"香酥脆薯(中)","大薯":"香酥脆薯(大)","4雞塊":"上校雞塊4塊","8雞塊":"上校雞塊8塊"};
@@ -47,7 +63,9 @@ function enrich(c,dict){
 function getFiltered(){
  const list=coupons.filter(c=>{
   if(state.search&&!norm([c.code,c.name,...itemNames(c,state.includeOptions)].join(" ")).includes(norm(state.search)))return false;
-  if(state.budget!==""&&c.price>Number(state.budget))return false;
+  if(!withinBudget(c.price,state.minPrice,state.maxPrice))return false;
+  const groups=matchingFoodGroups(c);
+  if(Object.entries(state.food).some(([key,mode])=>mode==="include"&&!groups[key]||mode==="exclude"&&groups[key]))return false;
   const drinks=drinksFor(c,state.includeOptions);
   if(state.drink==="yes"&&!drinks.length)return false;
   if(state.drink==="no"&&drinks.length)return false;
@@ -121,14 +139,58 @@ function render(){
  if(list.length>400)$("status").textContent+=" · 先顯示前 400 筆";
 }
 function reset(){
- Object.assign(state,{search:"",sort:"discount",budget:"",drink:"all",type:"",includeOptions:false,knownOnly:false,favoritesOnly:false});
- for(const id of ["search","sort","budget"])$(id).value=state[id];
+ Object.assign(state,{search:"",sort:"discount",budget:"",minPrice:"",maxPrice:"",food:{},drink:"all",type:"",includeOptions:false,knownOnly:false,favoritesOnly:false});
+ for(const id of ["search","sort","budget","minPrice","maxPrice"])$(id).value=state[id];
+ $("budgetError").textContent="";
+ document.querySelectorAll("[data-food]").forEach(b=>{b.dataset.mode="all";b.textContent=b.dataset.food+" · 不限";b.setAttribute("aria-pressed","false");});
  for(const id of ["includeOptions","knownOnly","favoritesOnly"])$(id).checked=false;
  document.querySelectorAll("[data-drink]").forEach(b=>{const on=b.dataset.drink==="all";b.classList.toggle("active",on);b.setAttribute("aria-pressed",String(on));});
  $("drinkTypes").querySelectorAll("button").forEach((b,i)=>b.classList.toggle("active",i===0));render();
 }
+function initTheme(){
+ let stored="light";
+ try{stored=localStorage.getItem("kfc-radar-theme")||"light";}catch{}
+ const apply=mode=>{
+   const dark=mode==="dark";
+   document.documentElement.dataset.theme=dark?"dark":"light";
+   $("themeLabel").textContent=dark?"淺色模式":"深色模式";
+   $("themeToggle").setAttribute("aria-pressed",String(dark));
+ };
+ apply(stored);
+ $("themeToggle").addEventListener("click",()=>{
+   const next=document.documentElement.dataset.theme==="dark"?"light":"dark";
+   apply(next);try{localStorage.setItem("kfc-radar-theme",next);}catch{}
+ });
+}
 function bind(){
- for(const id of ["search","sort","budget"])$(id).addEventListener(id==="search"?"input":"change",e=>{state[id]=e.target.value;render();});
+ for(const id of ["search","sort"])$(id).addEventListener(id==="search"?"input":"change",e=>{state[id]=e.target.value;render();});
+ $("budget").addEventListener("change",e=>{
+   state.budget=e.target.value;state.minPrice="";state.maxPrice=e.target.value;
+   $("minPrice").value="";$("maxPrice").value=state.maxPrice;updateBudget();
+ });
+ for(const id of ["minPrice","maxPrice"])$(id).addEventListener("input",e=>{
+   const v=e.target.value;
+   state[id]=v===""?"":String(Math.max(0,Number(v)));
+   state.budget="";$("budget").value="";updateBudget();
+ });
+ function updateBudget(){
+   const invalid=state.minPrice!==""&&state.maxPrice!==""&&Number(state.minPrice)>Number(state.maxPrice);
+   $("budgetError").textContent=invalid?"最低預算不能大於最高預算":"";
+   render();
+ }
+ for(const name of Object.keys(foodGroups)){
+   const b=node("button","food-filter",name+" · 不限");b.type="button";
+   b.dataset.food=name;b.dataset.mode="all";b.setAttribute("aria-pressed","false");
+   b.addEventListener("click",()=>{
+     const next=({all:"include",include:"exclude",exclude:"all"})[b.dataset.mode];
+     b.dataset.mode=next;b.textContent=name+" · "+({all:"不限",include:"包含",exclude:"排除"})[next];
+     b.setAttribute("aria-pressed",String(next!=="all"));
+     if(next==="all")delete state.food[name];else state.food[name]=next;
+     render();
+   });
+   $("itemFilters").append(b);
+ }
+ initTheme();
  for(const id of ["includeOptions","knownOnly","favoritesOnly"])$(id).addEventListener("change",e=>{state[id]=e.target.checked;render();});
  document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
   state.drink=b.dataset.drink;document.querySelectorAll("[data-drink]").forEach(x=>{const on=x===b;x.classList.toggle("active",on);x.setAttribute("aria-pressed",String(on));});render();
@@ -211,15 +273,15 @@ async function init(){
   ]);
   const d=window.COUPON_DICT;
   if(!d||!Array.isArray(d.coupon_list))throw Error("優惠資料格式異常");
-  presentCoupons(d,window.SINGLE_DICT,(couponSource==="live"?"KCouper 社群即時資料":"KCouper 社群備援快照")+(priceSource==="unavailable"?" · 單點價格暫無資料":""));
+  presentCoupons(d,window.SINGLE_DICT,(couponSource==="live"?"社群即時備援":"社群備援快照")+(priceSource==="unavailable"?" · 單點價格暫無資料":""));
  }catch(e){
   $("updated").textContent="資料暫時無法取得";
   $("status").textContent="載入失敗："+e.message;
   $("empty").hidden=false;
   $("empty").querySelector("strong").textContent="資料來源暫時不可用";
-  $("empty").querySelector("p").textContent="請稍後重新整理，或前往 KCouper 查詢。";
+  $("empty").querySelector("p").textContent="請稍後重新整理，或前往肯德基官方優惠頁查詢。";
  }
 }
-window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,enrich};
+window.__KFC_RADAR_TEST__={norm,drinksFor,referencePrice,enrich,matchingFoodGroups,withinBudget};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
