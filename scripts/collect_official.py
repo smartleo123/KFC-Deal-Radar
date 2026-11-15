@@ -48,16 +48,42 @@ def parsed_date(s):
     if not s:return ""
     return str(s).replace("/","-")[:10]
 
+def discovery_codes():
+    """Optional *code discovery* from KCouper; coupon facts must be KFC verified.
+
+    This is not a source for prices, validity, items or the frontend.
+    The collector can continue operating via its scan range if unavailable.
+    """
+    try:
+        req=Request("https://winedays.github.io/KCouper/coupon.js",
+                    headers={"User-Agent":"KFC-Deal-Radar/1.0"})
+        with urlopen(req,timeout=12) as response:
+            data=response.read(5_000_000).decode("utf-8")
+        prefix="window.COUPON_DICT="
+        if not data.lstrip().startswith(prefix):return []
+        parsed=json.loads(data.strip()[len(prefix):].rstrip(";"))
+        raw=parsed.get("coupon_by_code") or {}
+        return sorted({int(k) for k in raw if str(k).isdigit()}, reverse=True)
+    except (OSError,ValueError,UnicodeError) as exc:
+        print(f"Optional code discovery unavailable: {exc}")
+        return []
+
 def seed_codes(existing):
-    # Seed candidates from checked records and a small range rotated each run;
-    # no broad 20k+ coupon enumeration.
     known=sorted({int(k) for k in existing if str(k).isdigit()})
+    discovered=discovery_codes()
     start=int(os.environ.get("KFC_SCAN_START","24000"))
     end=int(os.environ.get("KFC_SCAN_END","26000"))
     cursor=int(existing.get("_scan_cursor",start)) if isinstance(existing,dict) else start
     if end<=start:raise ValueError("Invalid scan range")
-    rolling=[start+(cursor-start+i)%(end-start) for i in range(max(1,MAX_CHECKS-len(known[:20])))]
-    return list(dict.fromkeys(known[:20]+rolling)), start+(cursor-start+len(rolling))%(end-start)
+    # Limit repeated checks; prioritize a few known and discovered codes,
+    # reserve at least 20% for independent rotating range discovery.
+    budget=max(1,MAX_CHECKS)
+    known_limit=min(12,budget//4)
+    discovery_limit=max(0,budget-known_limit-max(1,budget//5))
+    rolling_count=max(1,budget-known_limit-discovery_limit)
+    rolling=[start+(cursor-start+i)%(end-start) for i in range(rolling_count)]
+    candidates=list(dict.fromkeys(known[:known_limit]+discovered[:discovery_limit]+rolling))
+    return candidates[:budget],start+(cursor-start+rolling_count)%(end-start)
 
 def fetch_coupon(code):
     voucher=post("/customer/v1/getEVoucherAPI",{"voucherNo":str(code),"phone":"","memberId":"","orderType":"2","mealPeriod":"3","shopCode":SHOP})
