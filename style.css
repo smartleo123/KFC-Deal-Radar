@@ -90,3 +90,19 @@
 .pricing-note{margin:20px 2px 8px;font-size:12px;line-height:1.75;color:#77776d}
 [data-theme="dark"] .pricing-note{color:#bbb0b4}
 @media(max-width:610px){.item-filter > .filter-heading{font-size:16px}.item-filter .food-filter{font-size:15px;padding:10px 12px}}
+
+/* Shareable coupon deep links */
+.card-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.share{border:1px solid #d7d8ce;background:#faf7f3;color:#8f302d;border-radius:9px;padding:11px 3px;font-size:13px;font-weight:700;white-space:nowrap}
+.share:hover{background:#f9ebe8}
+.shared-view{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:18px 0 0;background:#fff0e9;border:1px solid #edc5bc;border-radius:12px;padding:13px 16px;font-size:14px}
+.shared-view[hidden]{display:none}
+.shared-view strong{color:#b52e23}
+.shared-view button{border:0;border-radius:9px;background:#be2832;color:white;font-size:13px;font-weight:700;padding:9px 12px}
+.shared-target{outline:2px solid #d03b3e;outline-offset:2px}
+[data-theme="dark"] .share{background:#322528;color:#ffe7e9;border-color:#67444a}
+[data-theme="dark"] .share:hover{background:#4e2c32}
+[data-theme="dark"] .shared-view{background:#2c1c20;border-color:#69363d;color:#f4e8e9}
+[data-theme="dark"] .shared-view strong{color:#ff818b}
+[data-theme="dark"] .shared-target{outline-color:#ff6974}
+@media(max-width:610px){.card-actions{gap:6px}.details,.order,.share{font-size:12px;padding:11px 2px}.shared-view{align-items:flex-start;flex-direction:column}}
