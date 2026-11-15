@@ -75,3 +75,9 @@
 [data-theme="dark"] input[type="checkbox"]{accent-color:#df3340}
 [data-theme="dark"] button:focus-visible,[data-theme="dark"] a:focus-visible,
 [data-theme="dark"] input:focus-visible,[data-theme="dark"] select:focus-visible{outline-color:#ff7780}
+
+/* Coupon verification is visible without exposing a third-party brand. */
+.pill.verified{background:#e2f2e5;color:#246236;font-weight:700}
+.pill.unverified{background:#fff1d9;color:#805319;font-weight:700}
+[data-theme="dark"] .pill.verified{background:#243d2d;color:#a6e2b6}
+[data-theme="dark"] .pill.unverified{background:#4a3423;color:#ffd7a2}
