@@ -36,6 +36,10 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html app.js style.css .nojekyll _site/
+          mkdir -p _site/data
+          if [ -f data/official.json ]; then cp data/official.json _site/data/official.json; fi
+          if [ -f data/singles.json ]; then cp data/singles.json _site/data/singles.json; fi
+          # KCouper remains a clearly labeled fallback while official data expands.
           python3 scripts/sync_data.py _site
       - name: Configure Pages
         uses: actions/configure-pages@v5
