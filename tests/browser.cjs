@@ -40,7 +40,12 @@ async function main(){
  assert.equal($("empty").hidden,true);
  assert.equal(Number($("total").textContent.replace(/,/g,"")),official.coupon_list.length+1,"Community-only coupon must appear alongside official coupons");
  assert($("grid").textContent.includes("9999988"),"Community-only coupon code must be displayed");
- assert($("updated").textContent.includes("其他待驗證 1 張"),"Source breakdown must distinguish unverified coupons");
+ assert(!$("updated").textContent.includes("待驗證"),"Header must not label community coupons unverified");
+ const cards=[...w.document.querySelectorAll("article.coupon")];
+ const extraCard=cards.find(c=>c.textContent.includes("9999988"));
+ assert(extraCard && !extraCard.textContent.includes("官方驗證"),"Community-only coupon must have no verification badge");
+ const officialCard=cards.find(c=>c.querySelector(".code")?.textContent.includes(String(sample.coupon_code)));
+ assert(officialCard?.querySelector(".pill.verified")?.textContent==="官方驗證","Verified coupon must have official badge");
  const foodButton=[...w.document.querySelectorAll("[data-food]")].find(b=>b.dataset.food==="飲料");
  assert(foodButton,"Food filter must include drinks");
  foodButton.click();
