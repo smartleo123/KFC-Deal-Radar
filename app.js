@@ -274,15 +274,27 @@ async function init(){
  const officialTask=loadOfficialSnapshot().then(({data,singles})=>{
   officialData=data;officialPrices=singles;refresh();
  }).catch(error=>{officialIssue=error;console.warn("官方資料暫時不可用",error.message)});
- const communityTask=Promise.all([
-  loadLatest("coupon.js","COUPON_DICT"),
-  loadLatest("single.js","SINGLE_DICT").catch(()=>null)
- ]).then(()=>{
-  if(!window.COUPON_DICT||!Array.isArray(window.COUPON_DICT.coupon_list))throw Error("補充清單格式錯誤");
-  communityData=window.COUPON_DICT;
-  communityPrices=window.SINGLE_DICT||null;
-  refresh();
- }).catch(error=>{communityIssue=error;console.warn("補充資料暫時不可用",error.message)});
+ const communityTask=(async()=>{
+  let loaded=false;
+  // Pages publishes a refreshed snapshot every 30 minutes. Display that
+  // first, then replace it with the newest public source when reachable.
+  for(const origin of ["snapshot","live"]){
+   try{
+    await Promise.all([
+     loadScript("coupon.js",origin),
+     loadScript("single.js",origin).catch(()=>null)
+    ]);
+    if(!window.COUPON_DICT||!Array.isArray(window.COUPON_DICT.coupon_list))throw Error("補充清單格式錯誤");
+    communityData=window.COUPON_DICT;
+    communityPrices=window.SINGLE_DICT||null;
+    loaded=true;
+    refresh();
+   }catch(error){
+    if(!loaded)communityIssue=error;
+    console.warn("補充來源載入失敗："+origin,error.message);
+   }
+  }
+ })();
  await Promise.allSettled([officialTask,communityTask]);
  if(!officialData&&!communityData){
   $("updated").textContent="資料暫時無法取得";
