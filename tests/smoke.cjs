@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const listeners={};
+const sandbox={window:{},document:{readyState:'loading',addEventListener:(name,cb)=>listeners[name]=cb},localStorage:{getItem:()=>null},Date,Intl,Number,String,Math,Set,Object,Array,JSON,RegExp,console};
+vm.runInNewContext(fs.readFileSync('app.js','utf8'),sandbox);
+const {norm,drinksFor,referencePrice,enrich}=sandbox.window.__KFC_RADAR_TEST__;
+assert.equal(norm(' 雞 腿 '),'雞腿');
+const deal={coupon_code:12345,name:'測試套餐',price:90,items:[{name:'可樂(中)',count:1,flavors:[]},{name:'雞腿堡',count:1,flavors:[]}]};
+const singles={'可樂(中)':{price:35},'雞腿堡':{price:95}};
+assert.equal(drinksFor(deal).length,1);
+assert.equal(referencePrice(deal,singles),130);
+assert.equal(enrich(deal,singles).percent,30.8);
+assert.equal(enrich({...deal,items:[{name:'未知品項',count:1}]},singles).percent,null);
+const option={items:[{name:'雞腿堡',count:1,flavors:[{name:'冰紅茶'}]}]};
+assert.equal(drinksFor(option,false).length,0);
+assert.equal(drinksFor(option,true).length,1);
+console.log('Smoke tests passed');
