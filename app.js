@@ -288,6 +288,7 @@ async function init(){
     communityData=window.COUPON_DICT;
     communityPrices=window.SINGLE_DICT||null;
     loaded=true;
+    communityIssue=null;
     refresh();
    }catch(error){
     if(!loaded)communityIssue=error;
