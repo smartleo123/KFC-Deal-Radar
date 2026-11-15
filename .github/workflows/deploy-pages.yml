@@ -32,6 +32,8 @@ jobs:
           node tests/smoke.cjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload static website
         uses: actions/upload-pages-artifact@v3
         with:
