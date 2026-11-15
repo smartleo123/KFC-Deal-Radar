@@ -347,8 +347,8 @@ function mergeCouponLists(official,community){
 function isValidOnDate(c,now=Date.now()){
  const parse=(value,endOfDay)=>{
   if(!value)return null;
-  const valueText=String(value).replace(/\\//g,"-").slice(0,10);
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(valueText))return NaN;
+  const valueText=String(value).replace(/\//g,"-").slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(valueText))return NaN;
   return Date.parse(valueText+(endOfDay?"T23:59:59+08:00":"T00:00:00+08:00"));
  };
  const start=parse(c.start_date,false),end=parse(c.end_date,true);
