@@ -179,7 +179,6 @@ function card(c){
  const a=node("article","coupon"),top=node("div","coupon-top"),head=node("div","coupon-head");
  a.id="coupon-"+c.code;
  if(state.sharedCode===c.code)a.classList.add("shared-target");
- head.append(node("span","code","# "+c.code));
  const fav=node("button","fav"+(favorites.has(c.code)?" on":""),favorites.has(c.code)?"♥":"♡");
  fav.type="button";fav.setAttribute("aria-label","收藏優惠碼 "+c.code);fav.setAttribute("aria-pressed",String(favorites.has(c.code)));
  fav.addEventListener("click",()=>{
@@ -192,7 +191,7 @@ function card(c){
  share.addEventListener("click",()=>copyShareLink(c.code,share));
  const topActions=node("div","coupon-head-actions");
  topActions.append(share,fav);
- head.append(topActions);top.append(head,node("h4","",c.name||"優惠券 "+c.code));
+ head.append(node("h4","coupon-title",c.name||"優惠券 "+c.code),topActions);top.append(head);
  const pills=node("div","pill-row");
  if(drinksFor(c).length)pills.append(node("span","pill drink","🥤 含飲料"));
  if(c.source==="kfc_api_verified")pills.append(node("span","pill verified","官方驗證"));
