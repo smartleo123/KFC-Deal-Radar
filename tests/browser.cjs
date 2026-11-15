@@ -31,7 +31,6 @@ async function main(){
  w.eval(fs.readFileSync("app.js","utf8"));
  await new Promise(resolve=>setTimeout(resolve,350));
  const $=id=>w.document.getElementById(id);
- console.log("Updated:",$("updated").textContent);
  console.log("Status:",$("status").textContent);
  console.log("Rendered cards:",w.document.querySelectorAll("article.coupon").length);
  if(errors.length)throw errors[0];
@@ -40,12 +39,15 @@ async function main(){
  assert.equal($("empty").hidden,true);
  assert.equal(Number($("total").textContent.replace(/,/g,"")),official.coupon_list.length+1,"Community-only coupon must appear alongside official coupons");
  assert($("grid").textContent.includes("9999988"),"Community-only coupon code must be displayed");
- assert(!$("updated").textContent.includes("待驗證"),"Header must not label community coupons unverified");
+ assert(!w.document.body.textContent.includes("官方更新："),"Source timestamps must not appear on page");
+ assert(!w.document.body.textContent.includes("補充更新："),"Supplement timestamps must not appear on page");
  const cards=[...w.document.querySelectorAll("article.coupon")];
  const extraCard=cards.find(c=>c.textContent.includes("9999988"));
  assert(extraCard && !extraCard.textContent.includes("官方驗證"),"Community-only coupon must have no verification badge");
  const officialCard=cards.find(c=>c.querySelector(".code")?.textContent.includes(String(sample.coupon_code)));
  assert(officialCard?.querySelector(".pill.verified")?.textContent==="官方驗證","Verified coupon must have official badge");
+ assert(officialCard?.querySelector(".validity")?.textContent.includes(sample.end_date),"Coupon card must display end date");
+ assert(officialCard?.querySelector(".validity")?.textContent.includes(sample.start_date),"Coupon card must display start date");
  const foodButton=[...w.document.querySelectorAll("[data-food]")].find(b=>b.dataset.food==="飲料");
  assert(foodButton,"Food filter must include drinks");
  foodButton.click();
