@@ -4,7 +4,7 @@ const vm=require('node:vm');
 const listeners={};
 const sandbox={window:{},document:{readyState:'loading',addEventListener:(name,cb)=>listeners[name]=cb},localStorage:{getItem:()=>null},Date,Intl,Number,String,Math,Set,Object,Array,JSON,RegExp,console};
 vm.runInNewContext(fs.readFileSync('app.js','utf8'),sandbox);
-const {norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate}=sandbox.window.__KFC_RADAR_TEST__;
+const {money,norm,drinksFor,referencePrice,referencePriceInfo,enrich,matchingFoodGroups,withinBudget,mergeCouponLists,isValidOnDate}=sandbox.window.__KFC_RADAR_TEST__;
 assert.equal(norm(' 雞 腿 '),'雞腿');
 const deal={coupon_code:12345,name:'測試套餐',price:90,items:[{name:'可樂(中)',count:1,flavors:[]},{name:'雞腿堡',count:1,flavors:[]}]};
 const singles={'可樂(中)':{price:35},'雞腿堡':{price:95}};
@@ -63,4 +63,7 @@ assert.equal(isValidOnDate({start_date:'2026-11-01',end_date:'2026-11-15'},new D
 assert.equal(isValidOnDate({end_date:'not-a-date'},new Date('2026-11-16T12:00:00+08:00').getTime()),false);
 assert.equal(enrich({coupon_code:123,price:null,items:[]},{}),null);
 assert.equal(enrich({coupon_code:123,price:'',items:[]},{}),null);
+assert.equal(money(38.5),'NT$38.5');
+assert.equal(money(38.25),'NT$38.25');
+assert.equal(enrich({coupon_code:12345,price:150,original_price:120,items:[]},{}).saving,null);
 console.log('Smoke tests passed');
