@@ -151,3 +151,16 @@
 @media(max-width:610px){
  .coupon-head .coupon-title{font-size:19px;line-height:1.38}
 }
+
+/* Make the actual meal contents more prominent, rather than only the coupon title. */
+.coupon-top .items{
+ font-size:16px;
+ font-weight:750;
+ line-height:1.65;
+ color:#37362f;
+ overflow-wrap:anywhere;
+}
+[data-theme="dark"] .coupon-top .items{color:#f2e8e6}
+@media(max-width:610px){
+ .coupon-top .items{font-size:16px;line-height:1.65}
+}
