@@ -52,17 +52,7 @@ function pricePart(name,official,other,depth=0){
  if(freeItemsRE.test(cleaned))return {price:0,sources:[]};
  const direct=lookupUnit(name,official,other);
  if(direct)return {price:direct.price,sources:[direct.source]};
- // Count-labelled official coupon items: e.g. 2入原味蛋撻, 2塊咔啦脆雞.
- const counted=cleaned.match(/^(\d+)(?:入|顆|份|塊)(.+)$/);
- if(counted){
-  const count=Number(counted[1]),part=counted[2];
-  if(count>0&&count<=30){
-   const base=pricePart(part,official,other,depth+1);
-   if(base)return {price:count*base.price,sources:base.sources};
-  }
- }
- // Compose using the official individual menu prices, only when *every*
- // constituent is resolvable. Unknown bundles are never assigned invented values.
+ // Decompose bundle components before evaluating the quantity prefix.
  if(cleaned.includes("+")||cleaned.includes("＋")){
   const pieces=cleaned.split(/[+＋]/).filter(Boolean);
   if(pieces.length>1){
@@ -73,6 +63,16 @@ function pricePart(name,official,other,depth=0){
     total+=sub.price;sources.push(...sub.sources);
    }
    return {price:total,sources};
+  }
+ }
+ // Count-labelled items can use the single-item price only when it really
+ // denotes the same unit. Some KFC menu products are themselves multi-packs.
+ const counted=cleaned.match(/^(\d+)(?:入|顆|份|塊)(.+)$/);
+ if(counted){
+  const count=Number(counted[1]),part=counted[2];
+  if(count>0&&count<=30&& !/QQ球|分享盒|禮盒|套餐/.test(part)){
+   const base=pricePart(part,official,other,depth+1);
+   if(base)return {price:count*base.price,sources:base.sources};
   }
  }
  return null;
