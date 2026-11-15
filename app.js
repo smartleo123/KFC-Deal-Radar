@@ -105,7 +105,7 @@ function itemNames(c,include=false){return(c.items||[]).flatMap(i=>[i.name,...(i
 function drinksFor(c,include=false){return itemNames(c,include).filter(n=>drinkRE.test(n));}
 function enrich(c,dict,officialDict){
  const price=Number(c.price);
- if(!Number.isFinite(price)||price<0||!c.coupon_code)return null;
+ if(c.price===null||c.price===undefined||String(c.price).trim()===""||!Number.isFinite(price)||price<0||!c.coupon_code)return null;
  const reference=referencePriceInfo(c,dict,officialDict);
  const original=reference.price;
  const saving=original!==null&&original>price?original-price:null;
@@ -345,9 +345,15 @@ function mergeCouponLists(official,community){
  return [...byCode.values()];
 }
 function isValidOnDate(c,now=Date.now()){
- if(!c.end_date)return true;
- const stamp=Date.parse(String(c.end_date).replace(/\//g,"-").slice(0,10)+"T23:59:59+08:00");
- return Number.isFinite(stamp)&&stamp>=now;
+ const parse=(value,endOfDay)=>{
+  if(!value)return null;
+  const valueText=String(value).replace(/\\//g,"-").slice(0,10);
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(valueText))return NaN;
+  return Date.parse(valueText+(endOfDay?"T23:59:59+08:00":"T00:00:00+08:00"));
+ };
+ const start=parse(c.start_date,false),end=parse(c.end_date,true);
+ return (start===null||Number.isFinite(start)&&start<=now)
+  &&(end===null||Number.isFinite(end)&&end>=now);
 }
 function presentCoupons(data,singles,officialSingles=null){
  coupons=data.coupon_list.map(c=>enrich(c,singles,officialSingles)).filter(Boolean).filter(isValidOnDate);
@@ -380,13 +386,22 @@ async function init(){
   // first, then replace it with the newest public source when reachable.
   for(const origin of ["snapshot","live"]){
    try{
-    await Promise.all([
-     loadScript("coupon.js",origin),
-     loadScript("single.js",origin).catch(()=>null)
-    ]);
-    if(!window.COUPON_DICT||!Array.isArray(window.COUPON_DICT.coupon_list))throw Error("補充清單格式錯誤");
-    communityData=window.COUPON_DICT;
-    communityPrices=window.SINGLE_DICT||null;
+    // Load each upstream global in sequence. Parallel script execution can pair
+    // a live coupon list with an unrelated fallback price table.
+    window.COUPON_DICT=undefined;
+    await loadScript("coupon.js",origin);
+    const freshCoupons=window.COUPON_DICT;
+    if(!freshCoupons||!Array.isArray(freshCoupons.coupon_list))throw Error("補充清單格式錯誤");
+    window.SINGLE_DICT=undefined;
+    let freshPrices=null;
+    try{
+     await loadScript("single.js",origin);
+     if(window.SINGLE_DICT&&typeof window.SINGLE_DICT==="object")freshPrices=window.SINGLE_DICT;
+    }catch(error){console.warn("單點價格來源暫時不可用："+origin,error.message);}
+    communityData=freshCoupons;
+    // A temporarily unavailable live single-price source must not erase
+    // the last successful snapshot's unit-price references.
+    if(freshPrices)communityPrices=freshPrices;
     loaded=true;
     communityIssue=null;
     refresh();
