@@ -33,8 +33,8 @@ python3 -m http.server 8000
 
 1. 在 GitHub 建立 **public** repository，建議命名 `KFC-Deal-Radar`。
 2. 將本資料夾所有檔案（含 `.nojekyll`）提交到預設分支根目錄。
-3. 進入 **Settings → Pages → Build and deployment → Deploy from a branch**，選擇 `main` / `/(root)`，儲存。
-4. 等候 GitHub Pages 部署。預期網址：`https://smartleo123.github.io/KFC-Deal-Radar/`（前提是 repo 名稱和所有者相同）。
+3. 進入 **Settings → Pages → Build and deployment**，將 **Source** 設為 **GitHub Actions**（首次啟用需要 Repo 管理員在 GitHub 網站上操作）。
+4. 前往 **Actions → Deploy GitHub Pages**，若沒有自動部署成功，點選 **Run workflow** 重新部署；部署成功後再開啟網站。預期網址：`https://smartleo123.github.io/KFC-Deal-Radar/`（前提是 repo 名稱和所有者相同）。
 
 純 HTML/CSS/JS，無需 Node、後端或 API 金鑰。
 
