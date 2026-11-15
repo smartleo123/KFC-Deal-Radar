@@ -12,6 +12,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: official-kfc-collector
@@ -61,3 +63,30 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+
+  deploy:
+    needs: collect
+    runs-on: ubuntu-latest
+    if: success()
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout newly persisted verified data
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Build static site with official data
+        run: |
+          mkdir -p _site/data
+          cp index.html app.js style.css .nojekyll _site/
+          if [ -f data/official.json ]; then cp data/official.json _site/data/official.json; fi
+          if [ -f data/singles.json ]; then cp data/singles.json _site/data/singles.json; fi
+          python3 scripts/sync_data.py _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy collected data to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
