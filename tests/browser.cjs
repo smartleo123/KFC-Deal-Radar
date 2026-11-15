@@ -5,6 +5,8 @@ const {JSDOM}=require("jsdom");
 async function main(){
  const html=fs.readFileSync("index.html","utf8");
  const official=JSON.parse(fs.readFileSync("data/official.json","utf8"));
+ // Keep DOM tests independent of calendar time and upstream expiry dates.
+ official.coupon_list=official.coupon_list.map(c=>({...c,start_date:"2000-01-01",end_date:"2099-12-31"}));
  const singles=JSON.parse(fs.readFileSync("data/singles.json","utf8"));
  assert(official.coupon_list.length>0,"Fixture must contain coupons");
  assert(html.includes('rel="icon" type="image/svg+xml" href="./favicon.svg"'),"Site must point to the published favicon");
