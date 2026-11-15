@@ -139,18 +139,6 @@
  .coupon .card-actions{padding:10px 15px 15px}
 }
 
-/* Stronger product-title hierarchy without increasing card height excessively. */
-.coupon-head .coupon-title{
- font-size:20px;
- font-weight:850;
- line-height:1.35;
- letter-spacing:-.025em;
- color:#252321;
-}
-[data-theme="dark"] .coupon-head .coupon-title{color:#fff4f3}
-@media(max-width:610px){
- .coupon-head .coupon-title{font-size:19px;line-height:1.38}
-}
 
 /* Make the actual meal contents more prominent, rather than only the coupon title. */
 .coupon-top .items{
